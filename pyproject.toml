@@ -7,5 +7,6 @@ dependencies = [
     "ffmpeg-python>=0.2.0",
     "pillow>=11.3.0",
     "python-telegram-bot==20.8",
+    "telegram>=0.0.1",
     "yt-dlp>=2024.12.13",
 ]
