@@ -80,30 +80,36 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
         await processing_msg.edit_text("📤 Köçürülür...")
         
         # Send the MP3 file with thumbnail
-        thumbnail_file = None
         try:
             # Check if we have a thumbnail file
             thumbnail_path = result.get("thumbnail_path")
+            thumbnail_data = None
+            
             if thumbnail_path and os.path.exists(thumbnail_path):
-                thumbnail_file = open(thumbnail_path, 'rb')
+                try:
+                    with open(thumbnail_path, 'rb') as thumb_file:
+                        thumbnail_data = thumb_file.read()
+                        logger.info(f"Loaded thumbnail data: {len(thumbnail_data)} bytes from {thumbnail_path}")
+                except Exception as e:
+                    logger.error(f"Failed to read thumbnail: {e}")
             
             with open(result["file_path"], 'rb') as audio_file:
                 # Use original title as-is - don't clean or modify it
                 original_title = result["title"]
                 uploader = result["uploader"]
                 
-                # Send audio with original title preserved
+                # Send audio with original title preserved and thumbnail as bytes
                 await context.bot.send_audio(
                     chat_id=update.effective_chat.id,
                     audio=audio_file,
-                    thumbnail=thumbnail_file,
+                    thumbnail=thumbnail_data if thumbnail_data else None,
                     title=original_title,  # Keep original title exactly as it appears on YouTube
                     duration=result["duration"],
                     performer=uploader if uploader and uploader != "Unknown Artist" else None
                 )
-        finally:
-            if thumbnail_file:
-                thumbnail_file.close()
+                logger.info(f"Audio sent with thumbnail: {bool(thumbnail_data)}")
+        except Exception as e:
+            logger.error(f"Error sending audio: {e}")
         
         # Update progress after successful upload
         await processing_msg.edit_text("✅ Köçürüldü!")
@@ -320,30 +326,36 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
         await query.edit_message_text(f"📤 Köçürülür: {title}")
         
         # Send the MP3 file with thumbnail  
-        thumbnail_file = None
         try:
             # Check if we have a thumbnail file
             thumbnail_path = result.get("thumbnail_path")
+            thumbnail_data = None
+            
             if thumbnail_path and os.path.exists(thumbnail_path):
-                thumbnail_file = open(thumbnail_path, 'rb')
+                try:
+                    with open(thumbnail_path, 'rb') as thumb_file:
+                        thumbnail_data = thumb_file.read()
+                        logger.info(f"Loaded thumbnail data: {len(thumbnail_data)} bytes from {thumbnail_path}")
+                except Exception as e:
+                    logger.error(f"Failed to read thumbnail: {e}")
             
             with open(result["file_path"], 'rb') as audio_file:
                 # Use original title as-is - don't clean or modify it
                 original_title = result["title"]
                 uploader = result["uploader"]
                 
-                # Send audio with original title preserved
+                # Send audio with original title preserved and thumbnail as bytes
                 await context.bot.send_audio(
                     chat_id=query.message.chat.id,
                     audio=audio_file,
-                    thumbnail=thumbnail_file,
+                    thumbnail=thumbnail_data if thumbnail_data else None,
                     title=original_title,  # Keep original title exactly as it appears on YouTube
                     duration=result["duration"],
                     performer=uploader if uploader and uploader != "Unknown Artist" else None
                 )
-        finally:
-            if thumbnail_file:
-                thumbnail_file.close()
+                logger.info(f"Audio sent with thumbnail: {bool(thumbnail_data)}")
+        except Exception as e:
+            logger.error(f"Error sending audio: {e}")
         
         # Update final message
         await query.edit_message_text(f"✅ Köçürüldü: {title}")
