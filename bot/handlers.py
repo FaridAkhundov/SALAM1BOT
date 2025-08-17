@@ -250,8 +250,8 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             
             selected_song = search_results[song_idx]
             
-            # Update message to show processing
-            await query.edit_message_text(f"🔄 Yüklənir: {selected_song['title']}")
+            # Update message to show processing with consistent format
+            await query.edit_message_text("🔄 Sorğunuz emal olunur...")
             
             # Process the selected song
             await process_youtube_url_from_callback(query, context, selected_song['url'], selected_song['title'])
@@ -307,33 +307,15 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
         # Initialize YouTube processor
         processor = YouTubeProcessor()
         
-        # Simulated progress updates
-        async def simulate_progress():
+        # Real-time progress callback - same as direct URL downloads
+        async def update_progress(message):
             try:
-                progress_steps = [
-                    (f"📥 Yüklənir: {title} (15.6%)", 1),
-                    (f"📥 Yüklənir: {title} (31.2%)", 1.5),
-                    (f"📥 Yüklənir: {title} (48.8%)", 1),
-                    (f"📥 Yüklənir: {title} (64.3%)", 1.5),
-                    (f"📥 Yüklənir: {title} (79.7%)", 1),
-                    (f"📥 Hazırlanır: {title}", 0.5)
-                ]
-                
-                for message, delay in progress_steps:
-                    await asyncio.sleep(delay)
-                    try:
-                        await query.edit_message_text(message)
-                    except:
-                        break
+                await query.edit_message_text(message)
             except Exception as e:
-                logger.debug(f"Progress simulation error: {e}")
+                logger.debug(f"Progress update error: {e}")
 
-        # Start progress simulation and download simultaneously
-        progress_task = asyncio.create_task(simulate_progress())
-        result = await processor.download_and_convert(url)
-        
-        # Cancel progress simulation
-        progress_task.cancel()
+        # Start download with real-time progress - same as direct downloads
+        result = await processor.download_and_convert(url, progress_callback=update_progress)
         
         if not result["success"]:
             error_msg = result["error"]
