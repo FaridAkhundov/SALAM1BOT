@@ -13,6 +13,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **PROGRESS TRACKING UNIFIED (2025-08-17):** All download types (direct URL and search results) now use real-time progress tracking instead of simulated progress. Consistent experience across all download methods.
 
+**UI MESSAGES IMPROVED (2025-08-17):** Changed processing messages from "Sorğunuz emal olunur..." to "🎵 Mahnı hazırlanır..." for better user experience. Fixed RuntimeWarning issues in progress callback system.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

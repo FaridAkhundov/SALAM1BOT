@@ -60,21 +60,27 @@ class YouTubeProcessor:
                         
                         if self.progress_callback:
                             try:
-                                asyncio.run_coroutine_threadsafe(
-                                    self.progress_callback(f"📥 Mahnı yüklənir... ({progress}%)"),
-                                    asyncio.get_event_loop()
-                                )
-                            except:
+                                loop = asyncio.get_event_loop()
+                                if loop and not loop.is_closed():
+                                    asyncio.run_coroutine_threadsafe(
+                                        self.progress_callback(f"📥 Mahnı yüklənir... ({progress}%)"),
+                                        loop
+                                    )
+                            except Exception as e:
+                                logger.debug(f"Progress callback error: {e}")
                                 pass
                 elif d['status'] == 'finished':
                     self.download_progress = 100
                     if self.progress_callback:
                         try:
-                            asyncio.run_coroutine_threadsafe(
-                                self.progress_callback("🔄 MP3-ə çevrilir..."),
-                                asyncio.get_event_loop()
-                            )
-                        except:
+                            loop = asyncio.get_event_loop()
+                            if loop and not loop.is_closed():
+                                asyncio.run_coroutine_threadsafe(
+                                    self.progress_callback("🔄 MP3-ə çevrilir..."),
+                                    loop
+                                )
+                        except Exception as e:
+                            logger.debug(f"Progress callback error: {e}")
                             pass
 
             # High-performance options optimized for concurrent downloads
@@ -147,12 +153,15 @@ class YouTubeProcessor:
                 # Ensure download progress reaches 100%
                 if self.progress_callback:
                     try:
-                        asyncio.run_coroutine_threadsafe(
-                            self.progress_callback("📥 Mahnı yüklənir... (100%)"),
-                            asyncio.get_event_loop()
-                        )
-                        time.sleep(0.5)  # Brief pause to show 100%
-                    except:
+                        loop = asyncio.get_event_loop()
+                        if loop and not loop.is_closed():
+                            asyncio.run_coroutine_threadsafe(
+                                self.progress_callback("📥 Mahnı yüklənir... (100%)"),
+                                loop
+                            )
+                            time.sleep(0.5)  # Brief pause to show 100%
+                    except Exception as e:
+                        logger.debug(f"Progress callback error: {e}")
                         pass
                     
                 logger.info("Download completed, looking for converted file...")

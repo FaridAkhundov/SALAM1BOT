@@ -56,7 +56,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str) -> None:
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
-    processing_msg = await update.message.reply_text("🔄 Sorğunuz emal olunur...")
+    processing_msg = await update.message.reply_text("🎵 Mahnı hazırlanır...")
     
     try:
         # Initialize YouTube processor
@@ -302,7 +302,7 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
     """Process YouTube URL from button callback"""
     try:
         # Start with initial processing message
-        await query.edit_message_text("🔄 Sorğunuz emal olunur...")
+        await query.edit_message_text("🎵 Mahnı hazırlanır...")
         
         # Initialize YouTube processor
         processor = YouTubeProcessor()
