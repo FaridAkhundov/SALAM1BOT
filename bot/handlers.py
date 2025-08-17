@@ -88,35 +88,16 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
                 thumbnail_file = open(thumbnail_path, 'rb')
             
             with open(result["file_path"], 'rb') as audio_file:
-                # Clean title by removing channel/uploader info from beginning
-                clean_title = result["title"]
+                # Use original title as-is - don't clean or modify it
+                original_title = result["title"]
                 uploader = result["uploader"]
                 
-                # Remove uploader/channel name from beginning if present
-                if uploader and clean_title.lower().startswith(uploader.lower()):
-                    clean_title = clean_title[len(uploader):].strip()
-                
-                # Remove common separators from beginning  
-                separators = ['-', '–', '|', ':', '•', '→', '►', '»']
-                for sep in separators:
-                    if clean_title.startswith(sep):
-                        clean_title = clean_title[1:].strip()
-                        break
-                
-                # Remove "Official" prefixes
-                official_prefixes = ['Official Music Video', 'Official Video', 'Official Audio', 'official audio', 'official music video', 'official video']
-                for prefix in official_prefixes:
-                    if clean_title.lower().endswith(f'({prefix.lower()})'):
-                        clean_title = clean_title[:-len(f'({prefix})')].strip()
-                    elif clean_title.lower().endswith(f'[{prefix.lower()}]'):
-                        clean_title = clean_title[:-len(f'[{prefix}]')].strip()
-                
-                # Send audio with cleaned title
+                # Send audio with original title preserved
                 await context.bot.send_audio(
                     chat_id=update.effective_chat.id,
                     audio=audio_file,
                     thumbnail=thumbnail_file,
-                    title=clean_title,
+                    title=original_title,  # Keep original title exactly as it appears on YouTube
                     duration=result["duration"],
                     performer=uploader if uploader and uploader != "Unknown Artist" else None
                 )
