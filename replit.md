@@ -19,6 +19,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **TITLE PRESERVATION FIXED (2025-08-17):** Fixed title preservation issue - audio files now maintain their original YouTube titles exactly as they appear, without any cleaning or modification. User requested to preserve original song names.
 
+**METADATA ENHANCEMENT (2025-08-17):** Added FFmpegMetadata processor to properly embed title and metadata into MP3 files. This ensures proper title display in Telegram audio messages with correct metadata.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

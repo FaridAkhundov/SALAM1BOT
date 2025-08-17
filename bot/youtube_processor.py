@@ -85,6 +85,11 @@ class YouTubeProcessor:
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
                         'preferredquality': '192',
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
+                        'add_metadata': True,
+                        'add_chapters': True,
                     }
                 ],
                 'progress_hooks': [progress_hook],
