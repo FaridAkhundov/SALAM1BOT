@@ -34,16 +34,24 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = update.effective_user.id
     message_text = update.message.text.strip()
     
-    # No rate limiting - users can send unlimited requests
-    # Removed all rate limiting for maximum concurrency
+    # UNLIMITED MULTITASKING - No limits, no queues, fire-and-forget processing
+    # Users can send 50+ downloads simultaneously without any restrictions
     
-    # Process requests concurrently without waiting - fire and forget approach
+    # Create new search session if it's a song search (invalidates old searches)
+    if not is_valid_youtube_url(message_text):
+        # Generate new session ID to invalidate old search buttons
+        import time
+        new_session_id = time.time()
+        user_search_sessions[user_id] = new_session_id
+        user_search_timestamps[user_id] = datetime.now()
+    
+    # Process ALL requests concurrently - no limits, no waiting
     if is_valid_youtube_url(message_text):
         clean_url = clean_youtube_url(message_text)
-        # Create task for concurrent processing - no await to prevent blocking
+        # Fire-and-forget: unlimited concurrent downloads
         asyncio.create_task(process_youtube_url(update, context, clean_url))
     else:
-        # Create task for concurrent processing - no await to prevent blocking
+        # Fire-and-forget: unlimited concurrent searches  
         asyncio.create_task(process_song_search(update, context, message_text))
 
 async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str) -> None:
@@ -215,7 +223,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             
             # Verify user owns this search and check session validity
             if cb_user_id != user_id or user_id not in user_search_results:
-                await query.edit_message_text("❌ Bu axtarış sessiyası bitib. Zəhmət olmasa yenidən axtarın.")
+                await query.edit_message_text("❌ Bu axtarışın vaxtı keçib. Yenidən axtarış edin.")
                 return
             
             # Check if this search session is still valid (not expired by newer search)
@@ -223,7 +231,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                 current_session = user_search_sessions[user_id]
                 # If user has made a new search, invalidate old buttons
                 if cb_session_id != current_session:
-                    await query.edit_message_text("🔄 Bu axtarış səhifəsi köhnəlib. Yeni axtarış edilib - köhnə nəticələr deaktiv edildi.")
+                    await query.edit_message_text("⏱️ Bu axtarışın vaxtı keçib - yeni axtarış edilib. Köhnə nəticələr artıq işləmir.")
                     return
             
             # Time-based expiry check (1 hour)
@@ -231,7 +239,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                 current_search_time = user_search_timestamps[user_id]
                 time_diff = datetime.now() - current_search_time
                 if time_diff.total_seconds() > 3600:  # 1 hour expiry
-                    await query.edit_message_text("⏰ Bu axtarış sessiyasının müddəti bitib. Zəhmət olmasa yenidən axtarın.")
+                    await query.edit_message_text("⌛ Bu axtarışın müddəti bitib (1 saat). Yeni axtarış edin.")
                     return
             
             # Get selected song
@@ -260,9 +268,9 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             cb_user_id = int(cb_user_id)
             page = int(page)
             
-            # Verify user owns this search and check session validity
+            # Verify user owns this search and check session validity  
             if cb_user_id != user_id or user_id not in user_search_results:
-                await query.edit_message_text("❌ Bu axtarış sessiyası bitib. Zəhmət olmasa yenidən axtarın.")
+                await query.edit_message_text("❌ Bu səhifənin vaxtı keçib. Yenidən axtarış edin.")
                 return
             
             # Check if this search session is still valid (not expired by newer search)
@@ -270,7 +278,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                 current_session = user_search_sessions[user_id]
                 # If user has made a new search, invalidate old buttons
                 if cb_session_id != current_session:
-                    await query.edit_message_text("🔄 Bu axtarış səhifəsi köhnəlib. Yeni axtarış edilib - köhnə nəticələr deaktiv edildi.")
+                    await query.edit_message_text("⏱️ Bu səhifənin vaxtı keçib - yeni axtarış edilib. Köhnə səhifələr artıq işləmir.")
                     return
             
             # Time-based expiry check (1 hour)
@@ -278,7 +286,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                 current_search_time = user_search_timestamps[user_id]
                 time_diff = datetime.now() - current_search_time
                 if time_diff.total_seconds() > 3600:  # 1 hour expiry
-                    await query.edit_message_text("⏰ Bu axtarış sessiyasının müddəti bitib. Zəhmət olmasa yenidən axtarın.")
+                    await query.edit_message_text("⌛ Bu səhifənin müddəti bitib (1 saat). Yeni axtarış edin.")
                     return
             
             # Update keyboard for new page

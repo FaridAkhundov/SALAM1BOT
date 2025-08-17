@@ -9,6 +9,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **VERIFIED (2025-08-17):** Bot fully operational with scheduler started and application running. Ready for production use.
 
+**ENHANCED (2025-08-17):** Added unlimited multitasking - users can now send 50+ downloads simultaneously. Improved session management messages in Azerbaijani for expired search results.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -26,6 +28,7 @@ Thumbnail Fix: COMPLETED (2025-08-17) - Fixed thumbnail issue by removing EmbedT
 Multitasking: UNLIMITED (2025-08-17) - 50+ concurrent downloads, 25+ concurrent searches, no queues, fire-and-forget processing
 Code Cleanup: COMPLETED (2025-08-17) - Removed docstrings, comments, and unnecessary code while maintaining full functionality
 Session Management: ENHANCED (2025-08-17) - When users start new searches, old search result buttons show "session expired" message instead of processing outdated requests
+Expired Session Messages: IMPROVED (2025-08-17) - User-friendly Azerbaijani messages when old search buttons are clicked: "Bu axtarışın vaxtı keçib"
 
 # System Architecture
 
