@@ -26,7 +26,7 @@ class YouTubeProcessor:
         self.progress_callback = None
         self.executor = ThreadPoolExecutor(max_workers=3)  # Support for multitasking
         
-        # Configure optimized yt-dlp options with thumbnail support
+        # Configure optimized yt-dlp options with better thumbnail support
         self.ydl_opts = {
             'format': 'bestaudio/best[filesize<45M]',  # Prioritize smaller files
             'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
@@ -40,11 +40,11 @@ class YouTubeProcessor:
                 {
                     'key': 'EmbedThumbnail',  # Embed thumbnail in audio file
                     'already_have_thumbnail': False,
-                },
-                {
-                    'key': 'FFmpegMetadata',  # Add metadata support
                 }
             ],
+            'postprocessor_args': {
+                'EmbedThumbnail': ['-map_metadata', '0', '-id3v2_version', '3'],
+            },
             'quiet': True,
             'no_warnings': True,
             'noplaylist': True,
@@ -126,7 +126,7 @@ class YouTubeProcessor:
                         except:
                             pass
 
-            # Enhanced options with optimized thumbnail support for speed
+            # Enhanced options with better thumbnail support
             ydl_opts = {
                 'format': 'bestaudio/best[filesize<45M]',  # Prioritize smaller files
                 'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
@@ -141,20 +141,20 @@ class YouTubeProcessor:
                     {
                         'key': 'EmbedThumbnail',
                         'already_have_thumbnail': False,
-                    },
-                    {
-                        'key': 'FFmpegMetadata',  # Add metadata support
                     }
                 ],
+                'postprocessor_args': {
+                    'EmbedThumbnail': ['-map_metadata', '0', '-id3v2_version', '3'],
+                },
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
-                'quiet': True,  # Optimize for speed
-                'no_warnings': True,  # Optimize for speed
-                'socket_timeout': 10,  # Faster timeout
+                'quiet': True,
+                'no_warnings': True,
+                'socket_timeout': 10,
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'extractor_retries': 1,
                 'fragment_retries': 1,
-                'concurrent_fragment_downloads': 4,  # Speed up downloads
+                'concurrent_fragment_downloads': 4,
             }
             
             logger.info("Creating yt-dlp instance...")

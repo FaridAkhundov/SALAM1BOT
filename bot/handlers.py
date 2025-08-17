@@ -109,15 +109,13 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
                         clean_title = clean_title[1:].strip()
                         break
             
-            # Send audio with clean title and embedded thumbnail
-            # Note: Telegram will automatically detect embedded thumbnails in MP3 files
+            # Send audio with embedded thumbnail (no caption to keep clean)
             await context.bot.send_audio(
                 chat_id=update.effective_chat.id,
                 audio=audio_file,
                 title=clean_title,
                 duration=result["duration"],
-                performer=uploader if uploader and uploader != "Unknown Artist" else None,
-                caption=f"🎵 {clean_title}"
+                performer=uploader if uploader and uploader != "Unknown Artist" else None
             )
         
         # Update progress after successful upload
@@ -319,14 +317,13 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
                         clean_title = clean_title[1:].strip()
                         break
             
-            # Send audio with clean title and embedded thumbnail
+            # Send audio with embedded thumbnail (no caption to keep clean)
             await context.bot.send_audio(
                 chat_id=query.message.chat.id,
                 audio=audio_file,
                 title=clean_title,
                 duration=result["duration"],
-                performer=uploader if uploader and uploader != "Unknown Artist" else None,
-                caption=f"🎵 {clean_title}"
+                performer=uploader if uploader and uploader != "Unknown Artist" else None
             )
         
         # Update final message
