@@ -93,36 +93,50 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
         # Update progress for upload
         await processing_msg.edit_text("📤 Köçürülür...")
         
-        # Send the MP3 file
-        with open(result["file_path"], 'rb') as audio_file:
-            # Clean title by removing channel/uploader name from beginning
-            clean_title = result["title"]
-            uploader = result["uploader"]
+        # Send the MP3 file with thumbnail
+        thumbnail_file = None
+        try:
+            # Check if we have a thumbnail file
+            thumbnail_path = result.get("thumbnail_path")
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                thumbnail_file = open(thumbnail_path, 'rb')
             
-            # Remove uploader/channel name from the beginning of title if present
-            if uploader and clean_title.startswith(uploader):
-                # Remove uploader name and any following separator (-, –, |, etc.)
-                clean_title = clean_title[len(uploader):].strip()
-                # Remove common separators from the beginning
-                for sep in ['-', '–', '|', ':', '•']:
-                    if clean_title.startswith(sep):
-                        clean_title = clean_title[1:].strip()
-                        break
-            
-            # Send audio with embedded thumbnail (no caption to keep clean)
-            await context.bot.send_audio(
-                chat_id=update.effective_chat.id,
-                audio=audio_file,
-                title=clean_title,
-                duration=result["duration"],
-                performer=uploader if uploader and uploader != "Unknown Artist" else None
-            )
+            with open(result["file_path"], 'rb') as audio_file:
+                # Clean title by removing channel/uploader name from beginning
+                clean_title = result["title"]
+                uploader = result["uploader"]
+                
+                # Remove uploader/channel name from the beginning of title if present
+                if uploader and clean_title.startswith(uploader):
+                    # Remove uploader name and any following separator (-, –, |, etc.)
+                    clean_title = clean_title[len(uploader):].strip()
+                    # Remove common separators from the beginning
+                    for sep in ['-', '–', '|', ':', '•']:
+                        if clean_title.startswith(sep):
+                            clean_title = clean_title[1:].strip()
+                            break
+                
+                # Send audio with separate thumbnail file
+                await context.bot.send_audio(
+                    chat_id=update.effective_chat.id,
+                    audio=audio_file,
+                    thumbnail=thumbnail_file,
+                    title=clean_title,
+                    duration=result["duration"],
+                    performer=uploader if uploader and uploader != "Unknown Artist" else None
+                )
+        finally:
+            if thumbnail_file:
+                thumbnail_file.close()
         
         # Update progress after successful upload
         await processing_msg.edit_text("✅ Köçürüldü!")
         
-        # Clean up the file immediately after upload
-        cleanup_temp_files([result["file_path"]])
+        # Clean up the files immediately after upload
+        files_to_cleanup = [result["file_path"]]
+        if result.get("thumbnail_path") and os.path.exists(result["thumbnail_path"]):
+            files_to_cleanup.append(result["thumbnail_path"])
+        cleanup_temp_files(files_to_cleanup)
         
         # Delete processing message after a moment
         await asyncio.sleep(1)
@@ -301,36 +315,50 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
         # Update progress for upload
         await query.edit_message_text(f"📤 Köçürülür: {title}")
         
-        # Send the MP3 file
-        with open(result["file_path"], 'rb') as audio_file:
-            # Clean title by removing channel/uploader name from beginning
-            clean_title = result["title"]
-            uploader = result["uploader"]
+        # Send the MP3 file with thumbnail  
+        thumbnail_file = None
+        try:
+            # Check if we have a thumbnail file
+            thumbnail_path = result.get("thumbnail_path")
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                thumbnail_file = open(thumbnail_path, 'rb')
             
-            # Remove uploader/channel name from the beginning of title if present
-            if uploader and clean_title.startswith(uploader):
-                # Remove uploader name and any following separator (-, –, |, etc.)
-                clean_title = clean_title[len(uploader):].strip()
-                # Remove common separators from the beginning
-                for sep in ['-', '–', '|', ':', '•']:
-                    if clean_title.startswith(sep):
-                        clean_title = clean_title[1:].strip()
-                        break
-            
-            # Send audio with embedded thumbnail (no caption to keep clean)
-            await context.bot.send_audio(
-                chat_id=query.message.chat.id,
-                audio=audio_file,
-                title=clean_title,
-                duration=result["duration"],
-                performer=uploader if uploader and uploader != "Unknown Artist" else None
-            )
+            with open(result["file_path"], 'rb') as audio_file:
+                # Clean title by removing channel/uploader name from beginning
+                clean_title = result["title"]
+                uploader = result["uploader"]
+                
+                # Remove uploader/channel name from the beginning of title if present
+                if uploader and clean_title.startswith(uploader):
+                    # Remove uploader name and any following separator (-, –, |, etc.)
+                    clean_title = clean_title[len(uploader):].strip()
+                    # Remove common separators from the beginning
+                    for sep in ['-', '–', '|', ':', '•']:
+                        if clean_title.startswith(sep):
+                            clean_title = clean_title[1:].strip()
+                            break
+                
+                # Send audio with separate thumbnail file
+                await context.bot.send_audio(
+                    chat_id=query.message.chat.id,
+                    audio=audio_file,
+                    thumbnail=thumbnail_file,
+                    title=clean_title,
+                    duration=result["duration"],
+                    performer=uploader if uploader and uploader != "Unknown Artist" else None
+                )
+        finally:
+            if thumbnail_file:
+                thumbnail_file.close()
         
         # Update final message
         await query.edit_message_text(f"✅ Köçürüldü: {title}")
         
-        # Clean up the file immediately after upload
-        cleanup_temp_files([result["file_path"]])
+        # Clean up the files immediately after upload
+        files_to_cleanup = [result["file_path"]]
+        if result.get("thumbnail_path") and os.path.exists(result["thumbnail_path"]):
+            files_to_cleanup.append(result["thumbnail_path"])
+        cleanup_temp_files(files_to_cleanup)
         
         # Clean up search results for this user
         user_id = query.from_user.id

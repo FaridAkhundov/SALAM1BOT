@@ -228,6 +228,9 @@ class YouTubeProcessor:
                         "error": ERROR_MESSAGES["file_too_large"]
                     }
                 
+                # Find thumbnail file
+                thumbnail_path = self._find_thumbnail_file(title)
+                
                 logger.info(f"Conversion successful! File size: {file_size} bytes")
                 return {
                     "success": True,
@@ -235,7 +238,8 @@ class YouTubeProcessor:
                     "title": title,
                     "uploader": uploader,
                     "duration": duration,
-                    "file_size": file_size
+                    "file_size": file_size,
+                    "thumbnail_path": thumbnail_path
                 }
                 
         except Exception as e:
@@ -351,3 +355,34 @@ class YouTubeProcessor:
             return str(max(mp3_files, key=os.path.getctime))
         
         return ""
+    
+    def _find_thumbnail_file(self, title: str) -> str:
+        """
+        Find the thumbnail file in temp directory
+        
+        Args:
+            title (str): Video title to search for
+            
+        Returns:
+            str: Path to the thumbnail file, or None if not found
+        """
+        temp_path = Path(TEMP_DIR)
+        if not temp_path.exists():
+            return None
+            
+        # Clean title for filename matching
+        clean_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        
+        # Look for common thumbnail extensions
+        for ext in ['.webp', '.jpg', '.jpeg', '.png']:
+            # Look for exact match first
+            exact_file = temp_path / f"{clean_title}{ext}"
+            if exact_file.exists():
+                return str(exact_file)
+            
+            # Look for files containing the title
+            for file_path in temp_path.glob(f"*{ext}"):
+                if clean_title.lower() in file_path.stem.lower():
+                    return str(file_path)
+        
+        return None
