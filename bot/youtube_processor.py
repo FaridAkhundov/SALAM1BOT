@@ -50,6 +50,9 @@ class YouTubeProcessor:
             self.download_progress = 0
             self.conversion_progress = 0
             
+            # Store main event loop reference before threading
+            main_loop = asyncio.get_event_loop()
+            
             def progress_hook(d):
                 if d['status'] == 'downloading':
                     if d.get('total_bytes') or d.get('total_bytes_estimate'):
@@ -58,30 +61,29 @@ class YouTubeProcessor:
                         progress = min(99, int((downloaded / total) * 100))  # Cap at 99% until complete
                         self.download_progress = progress
                         
-                        if self.progress_callback:
+                        if self.progress_callback and main_loop:
                             try:
-                                loop = asyncio.get_event_loop()
-                                if loop and not loop.is_closed():
-                                    asyncio.run_coroutine_threadsafe(
-                                        self.progress_callback(f"📥 Mahnı yüklənir... ({progress}%)"),
-                                        loop
+                                if not main_loop.is_closed():
+                                    future = asyncio.run_coroutine_threadsafe(
+                                        self.progress_callback(f"📥 Yüklənir ({progress}%)"),
+                                        main_loop
                                     )
+                                    # Wait briefly for the callback to complete
+                                    future.result(timeout=0.1)
                             except Exception as e:
                                 logger.debug(f"Progress callback error: {e}")
-                                pass
                 elif d['status'] == 'finished':
                     self.download_progress = 100
-                    if self.progress_callback:
+                    if self.progress_callback and main_loop:
                         try:
-                            loop = asyncio.get_event_loop()
-                            if loop and not loop.is_closed():
-                                asyncio.run_coroutine_threadsafe(
-                                    self.progress_callback("🔄 MP3-ə çevrilir..."),
-                                    loop
+                            if not main_loop.is_closed():
+                                future = asyncio.run_coroutine_threadsafe(
+                                    self.progress_callback("📥 Yüklənir (100%)"),
+                                    main_loop
                                 )
+                                future.result(timeout=0.1)
                         except Exception as e:
                             logger.debug(f"Progress callback error: {e}")
-                            pass
 
             # High-performance options optimized for concurrent downloads
             ydl_opts = {
@@ -150,19 +152,19 @@ class YouTubeProcessor:
                 logger.info("Starting download and conversion...")
                 ydl.download([url])
                 
-                # Ensure download progress reaches 100%
+                # Show final completion message
                 if self.progress_callback:
                     try:
-                        loop = asyncio.get_event_loop()
-                        if loop and not loop.is_closed():
-                            asyncio.run_coroutine_threadsafe(
-                                self.progress_callback("📥 Mahnı yüklənir... (100%)"),
-                                loop
+                        main_loop = asyncio.get_event_loop()
+                        if main_loop and not main_loop.is_closed():
+                            future = asyncio.run_coroutine_threadsafe(
+                                self.progress_callback("✅ Hazır"),
+                                main_loop
                             )
-                            time.sleep(0.5)  # Brief pause to show 100%
+                            future.result(timeout=0.1)
+                            time.sleep(0.3)  # Brief pause to show completion
                     except Exception as e:
                         logger.debug(f"Progress callback error: {e}")
-                        pass
                     
                 logger.info("Download completed, looking for converted file...")
                 
