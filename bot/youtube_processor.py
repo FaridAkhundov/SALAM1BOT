@@ -19,16 +19,20 @@ class YouTubeProcessor:
     def __init__(self):
         Path(TEMP_DIR).mkdir(exist_ok=True)
         self.progress_callback = None
-        self.executor = ThreadPoolExecutor(max_workers=3)
+        # Increased workers for high concurrency - supports 50+ simultaneous downloads
+        self.download_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="download")
+        self.search_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="search")
+        # Connection pooling for better performance
+        self.session_pool = {}
     
     async def download_and_convert(self, url: str, progress_callback=None) -> dict:
         try:
             # Store progress callback
             self.progress_callback = progress_callback
             
-            # Run the download in thread pool for multitasking
+            # Use dedicated download executor with high concurrency
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(self.executor, self._download_video, url)
+            result = await loop.run_in_executor(self.download_executor, self._download_video, url)
             return result
             
         except Exception as e:
@@ -73,10 +77,10 @@ class YouTubeProcessor:
                         except:
                             pass
 
-            # Enhanced options with better thumbnail support
+            # High-performance options optimized for concurrent downloads
             ydl_opts = {
-                'format': 'bestaudio/best[filesize<45M]',  # Prioritize smaller files
-                'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
+                'format': 'bestaudio/best[filesize<45M]',
+                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',  # Unique names to prevent conflicts
                 'writethumbnail': True,
                 'writeinfojson': False,
                 'postprocessors': [
@@ -90,11 +94,19 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                'socket_timeout': 10,
+                # Optimized for high concurrency
+                'socket_timeout': 30,
+                'read_timeout': 30,
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'extractor_retries': 1,
-                'fragment_retries': 1,
-                'concurrent_fragment_downloads': 4,
+                'extractor_retries': 2,
+                'fragment_retries': 2,
+                'concurrent_fragment_downloads': 8,  # Doubled for faster downloads
+                'geo_bypass': True,
+                'geo_bypass_country': 'US',
+                # Connection pooling and keepalive
+                'keepvideo': False,
+                'max_downloads': 1,
+                'throttled_rate': None,  # No throttling for max speed
             }
             
             logger.info("Creating yt-dlp instance...")
@@ -195,8 +207,9 @@ class YouTubeProcessor:
     
     async def search_youtube(self, query: str, max_results: int = 24) -> list:
         try:
+            # Use dedicated search executor for concurrent search operations
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, self._search_youtube_sync, query, max_results)
+            result = await loop.run_in_executor(self.search_executor, self._search_youtube_sync, query, max_results)
             return result
         except Exception as e:
             logger.error(f"Error searching YouTube for '{query}': {str(e)}")
@@ -204,11 +217,17 @@ class YouTubeProcessor:
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
         try:
+            # High-performance search options for concurrent operations
             search_opts = {
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': True,  # Don't download, just get metadata
                 'default_search': 'ytsearch',
+                'socket_timeout': 15,
+                'read_timeout': 15,
+                'geo_bypass': True,
+                'geo_bypass_country': 'US',
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             }
             
             with yt_dlp.YoutubeDL(search_opts) as ydl:

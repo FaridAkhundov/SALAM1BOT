@@ -32,7 +32,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = update.effective_user.id
     message_text = update.message.text.strip()
     
-    if user_id in user_last_request:
+    # Rate limiting check (if enabled)
+    if RATE_LIMIT_SECONDS > 0 and user_id in user_last_request:
         time_diff = datetime.now() - user_last_request[user_id]
         if time_diff.total_seconds() < RATE_LIMIT_SECONDS:
             await update.message.reply_text(ERROR_MESSAGES["rate_limited"])
@@ -40,11 +41,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     
     user_last_request[user_id] = datetime.now()
     
+    # Process requests concurrently without waiting - fire and forget approach
     if is_valid_youtube_url(message_text):
         clean_url = clean_youtube_url(message_text)
-        await process_youtube_url(update, context, clean_url)
+        # Create task for concurrent processing - no await to prevent blocking
+        asyncio.create_task(process_youtube_url(update, context, clean_url))
     else:
-        await process_song_search(update, context, message_text)
+        # Create task for concurrent processing - no await to prevent blocking
+        asyncio.create_task(process_song_search(update, context, message_text))
 
 async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str) -> None:
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
