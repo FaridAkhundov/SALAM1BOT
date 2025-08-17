@@ -104,12 +104,13 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
                         clean_title = clean_title[1:].strip()
                         break
             
-            # Send audio with clean title only (no performer to avoid duplication)
+            # Send audio with clean title and embedded thumbnail
             await context.bot.send_audio(
                 chat_id=update.effective_chat.id,
                 audio=audio_file,
                 title=clean_title,
-                duration=result["duration"]
+                duration=result["duration"],
+                performer=uploader if uploader and uploader != "Unknown Artist" else None
             )
         
         # Update progress after successful upload

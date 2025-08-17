@@ -127,6 +127,7 @@ class YouTubeProcessor:
                 'format': 'bestaudio/best',
                 'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
                 'writethumbnail': True,
+                'writeinfojson': False,
                 'postprocessors': [
                     {
                         'key': 'FFmpegExtractAudio',
@@ -136,6 +137,9 @@ class YouTubeProcessor:
                     {
                         'key': 'EmbedThumbnail',
                         'already_have_thumbnail': False,
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
                     }
                 ],
                 'progress_hooks': [progress_hook],

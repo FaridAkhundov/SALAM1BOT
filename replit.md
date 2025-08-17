@@ -5,6 +5,9 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 ## Migration Status
 **COMPLETED (2025-08-17):** Successfully migrated from Replit Agent to standard Replit environment. All package conflicts resolved, dependencies installed, and bot token configured. Bot is running and ready for use.
 
+## Migration Status
+**COMPLETED (2025-08-17):** Successfully migrated from Replit Agent to standard Replit environment. All package conflicts resolved, dependencies installed, and bot token configured. Bot is running and ready for use.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -15,7 +18,7 @@ User Interface Notes: Search limitations notice moved from /help to /start comma
 Language Updates: Changed "Video" to "Mahnı" in all user-facing messages (2025-08-10)
 URL Cleaning: Added automatic playlist parameter removal from YouTube URLs (2025-08-10)
 Title Cleaning: Remove channel/uploader names from audio file titles to avoid duplication (2025-08-10)
-Thumbnail Support: ADDED (2025-08-17) - Songs now include embedded thumbnails without extra text
+Thumbnail Support: UPDATED (2025-08-17) - Songs now include embedded thumbnails with FFmpegMetadata support
 Multitasking: IMPLEMENTED (2025-08-17) - Concurrent processing for multiple users
 Code Cleanup: COMPLETED (2025-08-17) - Removed unnecessary code parts while maintaining functionality
 
