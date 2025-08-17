@@ -1,28 +1,18 @@
-"""
-Configuration settings for the Telegram YouTube to MP3 Bot
-"""
+# Bot configuration
 
 import os
 
-# Telegram Bot Token - get from environment variable
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 if not BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
 
-# File size limits (Telegram has 50MB limit)
-MAX_FILE_SIZE_MB = 45  # Leave some buffer
+MAX_FILE_SIZE_MB = 45
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-
-# Download settings (optimized for speed)
-DOWNLOAD_TIMEOUT = 45  # 45 seconds for faster timeout
+DOWNLOAD_TIMEOUT = 45
 TEMP_DIR = "temp_downloads"
-
-# Rate limiting (simple per-user)
-RATE_LIMIT_SECONDS = 0  # No rate limiting
-
-# Audio quality settings
-AUDIO_QUALITY = "192"  # 192 kbps
+RATE_LIMIT_SECONDS = 0
+AUDIO_QUALITY = "192"
 AUDIO_FORMAT = "mp3"
 
 # Bot messages

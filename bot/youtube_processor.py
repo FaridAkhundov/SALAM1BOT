@@ -1,6 +1,4 @@
-"""
-YouTube video download and MP3 conversion processor
-"""
+# YouTube video processor
 
 import os
 import asyncio
@@ -17,55 +15,13 @@ from config import (
 logger = logging.getLogger(__name__)
 
 class YouTubeProcessor:
-    """Handles YouTube video downloading and MP3 conversion"""
     
     def __init__(self):
-        """Initialize the processor"""
-        # Create temp directory if it doesn't exist
         Path(TEMP_DIR).mkdir(exist_ok=True)
         self.progress_callback = None
-        self.executor = ThreadPoolExecutor(max_workers=3)  # Support for multitasking
-        
-        # Configure optimized yt-dlp options with better thumbnail support
-        self.ydl_opts = {
-            'format': 'bestaudio/best[filesize<45M]',  # Prioritize smaller files
-            'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
-            'writethumbnail': True,  # Download thumbnail
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': AUDIO_FORMAT,
-                    'preferredquality': AUDIO_QUALITY,
-                },
-                {
-                    'key': 'EmbedThumbnail',  # Embed thumbnail in audio file
-                    'already_have_thumbnail': False,
-                }
-            ],
-            'postprocessor_args': {
-                'EmbedThumbnail': ['-map_metadata', '0', '-id3v2_version', '3'],
-            },
-            'quiet': True,
-            'no_warnings': True,
-            'noplaylist': True,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'extractor_retries': 1,  # Faster retries
-            'fragment_retries': 1,   # Faster retries
-            'socket_timeout': 15,    # Faster timeout
-            'concurrent_fragment_downloads': 4,  # Speed up downloads
-        }
+        self.executor = ThreadPoolExecutor(max_workers=3)
     
     async def download_and_convert(self, url: str, progress_callback=None) -> dict:
-        """
-        Download YouTube video and convert to MP3 with real-time progress
-        
-        Args:
-            url (str): YouTube video URL
-            progress_callback: Callback function for progress updates
-            
-        Returns:
-            dict: Result containing success status, file path, and metadata
-        """
         try:
             # Store progress callback
             self.progress_callback = progress_callback
@@ -83,15 +39,6 @@ class YouTubeProcessor:
             }
     
     def _download_video(self, url: str) -> dict:
-        """
-        Synchronous download function to run in executor with real-time progress
-        
-        Args:
-            url (str): YouTube video URL
-            
-        Returns:
-            dict: Result containing success status, file path, and metadata
-        """
         try:
             logger.info(f"Starting download for URL: {url}")
             
@@ -247,16 +194,6 @@ class YouTubeProcessor:
             }
     
     async def search_youtube(self, query: str, max_results: int = 24) -> list:
-        """
-        Search YouTube for videos by query
-        
-        Args:
-            query (str): Search query
-            max_results (int): Maximum number of results to return (max 24 for 3 pages)
-            
-        Returns:
-            list: List of video dictionaries with title, url, and uploader
-        """
         try:
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, self._search_youtube_sync, query, max_results)
@@ -266,16 +203,6 @@ class YouTubeProcessor:
             return []
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
-        """
-        Synchronous YouTube search function to run in executor
-        
-        Args:
-            query (str): Search query
-            max_results (int): Maximum number of results to return
-            
-        Returns:
-            list: List of video dictionaries
-        """
         try:
             search_opts = {
                 'quiet': True,
@@ -319,15 +246,6 @@ class YouTubeProcessor:
             return []
 
     def _find_converted_file(self, title: str) -> str:
-        """
-        Find the converted MP3 file
-        
-        Args:
-            title (str): Video title
-            
-        Returns:
-            str: Path to the MP3 file
-        """
         # Clean title for filename matching
         clean_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
         
@@ -352,15 +270,6 @@ class YouTubeProcessor:
         return ""
     
     def _find_thumbnail_file(self, title: str) -> str:
-        """
-        Find the thumbnail file in temp directory
-        
-        Args:
-            title (str): Video title to search for
-            
-        Returns:
-            str: Path to the thumbnail file, or None if not found
-        """
         temp_path = Path(TEMP_DIR)
         if not temp_path.exists():
             logger.info("Temp directory does not exist")

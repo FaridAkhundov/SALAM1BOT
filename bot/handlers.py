@@ -1,6 +1,4 @@
-"""
-Telegram bot command and message handlers
-"""
+# Telegram bot handlers
 
 import asyncio
 import logging
@@ -16,61 +14,40 @@ from bot.utils import is_valid_youtube_url, cleanup_temp_files, clean_youtube_ur
 
 logger = logging.getLogger(__name__)
 
-# Simple in-memory rate limiting storage
 user_last_request = {}
-
-# Store search results for pagination
 user_search_results = {}
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /start command"""
     if update.message:
-        await update.message.reply_text(
-            WELCOME_MESSAGE,
-            parse_mode='Markdown'
-        )
+        await update.message.reply_text(WELCOME_MESSAGE, parse_mode='Markdown')
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /help command"""
     if update.message:
-        await update.message.reply_text(
-            HELP_MESSAGE,
-            parse_mode='Markdown'
-        )
+        await update.message.reply_text(HELP_MESSAGE, parse_mode='Markdown')
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle text messages - both YouTube URLs and song search queries"""
     if not update.effective_user or not update.message or not update.message.text:
         return
         
     user_id = update.effective_user.id
     message_text = update.message.text.strip()
     
-    # Check rate limiting
     if user_id in user_last_request:
         time_diff = datetime.now() - user_last_request[user_id]
         if time_diff.total_seconds() < RATE_LIMIT_SECONDS:
             await update.message.reply_text(ERROR_MESSAGES["rate_limited"])
             return
     
-    # Update last request time
     user_last_request[user_id] = datetime.now()
     
-    # Check if message is a YouTube URL
     if is_valid_youtube_url(message_text):
-        # Clean URL to remove playlist parameters
         clean_url = clean_youtube_url(message_text)
         await process_youtube_url(update, context, clean_url)
     else:
-        # Treat as song search query
         await process_song_search(update, context, message_text)
 
 async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str) -> None:
-    """Process YouTube URL for download"""
-    # Send typing indicator
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
-    
-    # Send processing message
     processing_msg = await update.message.reply_text("🔄 Sorğunuz emal olunur...")
     
     try:
@@ -148,7 +125,6 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
         await processing_msg.edit_text(ERROR_MESSAGES["general_error"])
 
 async def process_song_search(update: Update, context: ContextTypes.DEFAULT_TYPE, query: str) -> None:
-    """Process song search query and display paginated results"""
     user_id = update.effective_user.id
     
     # Send typing indicator
@@ -185,7 +161,6 @@ async def process_song_search(update: Update, context: ContextTypes.DEFAULT_TYPE
         await searching_msg.edit_text(ERROR_MESSAGES["general_error"])
 
 def create_paginated_keyboard(results: list, page: int, user_id: int) -> InlineKeyboardMarkup:
-    """Create paginated inline keyboard with song buttons"""
     buttons = []
     start_idx = page * 8
     end_idx = min(start_idx + 8, len(results))
@@ -216,7 +191,6 @@ def create_paginated_keyboard(results: list, page: int, user_id: int) -> InlineK
     return InlineKeyboardMarkup(buttons)
 
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle inline keyboard button callbacks"""
     query = update.callback_query
     await query.answer()
     
@@ -374,11 +348,9 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
         else:
             await query.edit_message_text(f"❌ Yüklənmə xətası: {title}")
 
-# Keep old function name for compatibility
 url_handler = message_handler
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle errors"""
     logger.error(f"Update {update} caused error {context.error}")
     
     if update and update.message:
