@@ -105,6 +105,7 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
                         break
             
             # Send audio with clean title and embedded thumbnail
+            # Note: Telegram will automatically detect embedded thumbnails in MP3 files
             await context.bot.send_audio(
                 chat_id=update.effective_chat.id,
                 audio=audio_file,

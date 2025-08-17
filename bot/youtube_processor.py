@@ -137,15 +137,12 @@ class YouTubeProcessor:
                     {
                         'key': 'EmbedThumbnail',
                         'already_have_thumbnail': False,
-                    },
-                    {
-                        'key': 'FFmpegMetadata',
                     }
                 ],
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
-                'quiet': True,
-                'no_warnings': True,
+                'quiet': False,  # Enable verbose output for debugging
+                'no_warnings': False,  # Show warnings for debugging
                 'socket_timeout': 15,
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'extractor_retries': 1,
