@@ -148,16 +148,7 @@ class YouTubeProcessor:
                 logger.info("Starting download and conversion...")
                 ydl.download([url])
                 
-                # Show final completion message
-                if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
-                    try:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.progress_callback("✅ Hazır"),
-                            self.main_loop
-                        )
-                        time.sleep(0.3)  # Brief pause to show completion
-                    except Exception as e:
-                        logger.debug(f"Progress callback error: {e}")
+                # No final completion message needed
                     
                 logger.info("Download completed, looking for converted file...")
                 
