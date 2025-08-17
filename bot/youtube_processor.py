@@ -137,15 +137,8 @@ class YouTubeProcessor:
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
                         'preferredquality': '192',
-                    },
-                    {
-                        'key': 'EmbedThumbnail',
-                        'already_have_thumbnail': False,
                     }
                 ],
-                'postprocessor_args': {
-                    'EmbedThumbnail': ['-map_metadata', '0', '-id3v2_version', '3'],
-                },
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
                 'quiet': True,
