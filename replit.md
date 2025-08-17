@@ -20,7 +20,7 @@ Title Cleaning: Remove channel/uploader names from audio file titles to avoid du
 Thumbnail Support: UPDATED (2025-08-17) - Songs now include embedded thumbnails with FFmpegMetadata support
 Performance Optimization: ADDED (2025-08-17) - Optimized download speed with concurrent fragments and faster timeouts
 UI Cleanup: COMPLETED (2025-08-17) - Removed extra caption text from audio messages for cleaner interface
-Thumbnail Fix: UPDATED (2025-08-17) - Improved FFmpeg metadata handling for better thumbnail display in Telegram
+Thumbnail Fix: COMPLETED (2025-08-17) - Fixed thumbnail issue by removing EmbedThumbnail processor and using separate thumbnail files for better Telegram compatibility
 Multitasking: IMPLEMENTED (2025-08-17) - Concurrent processing for multiple users
 Code Cleanup: COMPLETED (2025-08-17) - Removed unnecessary code parts while maintaining functionality
 
