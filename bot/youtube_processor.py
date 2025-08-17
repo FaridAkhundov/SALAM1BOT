@@ -62,7 +62,7 @@ class YouTubeProcessor:
                                 try:
                                     # Schedule callback on main loop
                                     future = asyncio.run_coroutine_threadsafe(
-                                        self.progress_callback(f"📥 Yüklənir ({progress}%)"),
+                                        self.progress_callback(f"📥 Yüklənir.. ({progress}%)"),
                                         self.main_loop
                                     )
                                     # Don't wait for result to avoid blocking
