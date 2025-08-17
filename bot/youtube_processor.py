@@ -27,12 +27,13 @@ class YouTubeProcessor:
     
     async def download_and_convert(self, url: str, progress_callback=None) -> dict:
         try:
-            # Store progress callback
+            # Store progress callback and event loop
             self.progress_callback = progress_callback
+            self.main_loop = asyncio.get_running_loop()
+            logger.info(f"Stored main loop reference: {self.main_loop}")
             
             # Use dedicated download executor with high concurrency
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(self.download_executor, self._download_video, url)
+            result = await self.main_loop.run_in_executor(self.download_executor, self._download_video, url)
             return result
             
         except Exception as e:
@@ -46,44 +47,39 @@ class YouTubeProcessor:
         try:
             logger.info(f"Starting download for URL: {url}")
             
-            # Progress tracking variables
-            self.download_progress = 0
-            self.conversion_progress = 0
-            
-            # Store main event loop reference before threading
-            main_loop = asyncio.get_event_loop()
-            
             def progress_hook(d):
-                if d['status'] == 'downloading':
-                    if d.get('total_bytes') or d.get('total_bytes_estimate'):
-                        total = d.get('total_bytes') or d.get('total_bytes_estimate')
-                        downloaded = d.get('downloaded_bytes', 0)
-                        progress = min(99, int((downloaded / total) * 100))  # Cap at 99% until complete
-                        self.download_progress = progress
-                        
-                        if self.progress_callback and main_loop:
-                            try:
-                                if not main_loop.is_closed():
+                try:
+                    if d['status'] == 'downloading':
+                        if d.get('total_bytes') or d.get('total_bytes_estimate'):
+                            total = d.get('total_bytes') or d.get('total_bytes_estimate')
+                            downloaded = d.get('downloaded_bytes', 0)
+                            progress = min(99, int((downloaded / total) * 100))
+                            
+                            # Log progress for debugging
+                            logger.info(f"Download progress: {progress}%")
+                            
+                            if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
+                                try:
+                                    # Schedule callback on main loop
                                     future = asyncio.run_coroutine_threadsafe(
                                         self.progress_callback(f"📥 Yüklənir ({progress}%)"),
-                                        main_loop
+                                        self.main_loop
                                     )
-                                    # Wait briefly for the callback to complete
-                                    future.result(timeout=0.1)
-                            except Exception as e:
-                                logger.debug(f"Progress callback error: {e}")
-                elif d['status'] == 'finished':
-                    self.download_progress = 100
-                    if self.progress_callback and main_loop:
-                        try:
-                            if not main_loop.is_closed():
+                                    # Don't wait for result to avoid blocking
+                                except Exception as e:
+                                    logger.error(f"Progress callback failed: {e}")
+                    elif d['status'] == 'finished':
+                        logger.info("Download finished - 100%")
+                        if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
+                            try:
                                 future = asyncio.run_coroutine_threadsafe(
                                     self.progress_callback("📥 Yüklənir (100%)"),
-                                    main_loop
+                                    self.main_loop
                                 )
-                                future.result(timeout=0.1)
-                        except Exception as e:
-                            logger.debug(f"Progress callback error: {e}")
+                            except Exception as e:
+                                logger.error(f"Finished callback failed: {e}")
+                except Exception as e:
+                    logger.error(f"Progress hook error: {e}")
 
             # High-performance options optimized for concurrent downloads
             ydl_opts = {
@@ -153,16 +149,13 @@ class YouTubeProcessor:
                 ydl.download([url])
                 
                 # Show final completion message
-                if self.progress_callback:
+                if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
                     try:
-                        main_loop = asyncio.get_event_loop()
-                        if main_loop and not main_loop.is_closed():
-                            future = asyncio.run_coroutine_threadsafe(
-                                self.progress_callback("✅ Hazır"),
-                                main_loop
-                            )
-                            future.result(timeout=0.1)
-                            time.sleep(0.3)  # Brief pause to show completion
+                        future = asyncio.run_coroutine_threadsafe(
+                            self.progress_callback("✅ Hazır"),
+                            self.main_loop
+                        )
+                        time.sleep(0.3)  # Brief pause to show completion
                     except Exception as e:
                         logger.debug(f"Progress callback error: {e}")
                     
