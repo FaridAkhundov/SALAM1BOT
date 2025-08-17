@@ -4,9 +4,10 @@ version = "0.1.0"
 description = "Telegram bot that converts YouTube videos to MP3"
 requires-python = ">=3.11"
 dependencies = [
-    "python-telegram-bot==20.8",
-    "yt-dlp>=2024.12.13",
     "ffmpeg-python>=0.2.0",
+    "python-telegram-bot[all]==20.8",
+    "telegram>=0.0.1",
+    "yt-dlp>=2024.12.13",
 ]
 
 [tool.uv]
