@@ -168,8 +168,31 @@ def create_paginated_keyboard(results: list, page: int, user_id: int) -> InlineK
     # Add song buttons (8 per page)
     for i in range(start_idx, end_idx):
         song = results[i]
-        # Truncate title if too long for button
-        display_title = song['title'][:50] + "..." if len(song['title']) > 50 else song['title']
+        
+        # Clean the title - remove uploader/channel name if present
+        clean_title = song['title']
+        uploader = song.get('uploader', '')
+        
+        # Remove uploader name from beginning if present
+        if uploader and clean_title.startswith(uploader):
+            clean_title = clean_title[len(uploader):].strip()
+            # Remove common separators from the beginning
+            for sep in ['-', '–', '|', ':', '•', 'ft.', 'feat.']:
+                if clean_title.startswith(sep):
+                    clean_title = clean_title[len(sep):].strip()
+                    break
+        
+        # Remove common prefixes that make titles messy
+        prefixes_to_remove = ['Official Music Video', 'Official Video', 'Lyrics', 'HD', '4K']
+        for prefix in prefixes_to_remove:
+            if f'({prefix})' in clean_title:
+                clean_title = clean_title.replace(f'({prefix})', '').strip()
+            if f'[{prefix}]' in clean_title:
+                clean_title = clean_title.replace(f'[{prefix}]', '').strip()
+        
+        # Increase character limit for better title display
+        display_title = clean_title[:65] + "..." if len(clean_title) > 65 else clean_title
+        
         buttons.append([InlineKeyboardButton(
             f"🎵 {display_title}",
             callback_data=f"song_{user_id}_{i}"

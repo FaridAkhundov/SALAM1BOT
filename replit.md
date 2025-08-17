@@ -9,6 +9,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **VERIFIED (2025-08-17):** Bot fully operational with scheduler started and application running. Ready for production use.
 
+**BUTTON TITLES ENHANCED (2025-08-17):** Improved song title display in search buttons - removed uploader names, increased character limit to 65, cleaned up common video tags like "Official Music Video" for better readability.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
