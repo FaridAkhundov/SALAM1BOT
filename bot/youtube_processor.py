@@ -230,6 +230,8 @@ class YouTubeProcessor:
                 
                 # Find thumbnail file
                 thumbnail_path = self._find_thumbnail_file(title)
+                logger.info(f"Looking for thumbnail with title: {title}")
+                logger.info(f"Found thumbnail path: {thumbnail_path}")
                 
                 logger.info(f"Conversion successful! File size: {file_size} bytes")
                 return {
@@ -368,21 +370,39 @@ class YouTubeProcessor:
         """
         temp_path = Path(TEMP_DIR)
         if not temp_path.exists():
+            logger.info("Temp directory does not exist")
             return None
             
-        # Clean title for filename matching
-        clean_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        # List all files in temp directory for debugging
+        all_files = list(temp_path.glob("*"))
+        logger.info(f"All files in temp directory: {[f.name for f in all_files]}")
         
         # Look for common thumbnail extensions
         for ext in ['.webp', '.jpg', '.jpeg', '.png']:
             # Look for exact match first
-            exact_file = temp_path / f"{clean_title}{ext}"
+            exact_file = temp_path / f"{title}{ext}"
             if exact_file.exists():
+                logger.info(f"Found exact thumbnail match: {exact_file}")
                 return str(exact_file)
             
-            # Look for files containing the title
+            # Look for files containing the title or similar pattern
             for file_path in temp_path.glob(f"*{ext}"):
-                if clean_title.lower() in file_path.stem.lower():
+                logger.info(f"Checking thumbnail file: {file_path.name}")
+                # Check if title is in filename (more flexible matching)
+                if any(word.lower() in file_path.stem.lower() for word in title.split() if len(word) > 3):
+                    logger.info(f"Found thumbnail match: {file_path}")
                     return str(file_path)
         
+        # Just grab any thumbnail file as last resort
+        thumbnail_files = []
+        for ext in ['.webp', '.jpg', '.jpeg', '.png']:
+            thumbnail_files.extend(temp_path.glob(f"*{ext}"))
+        
+        if thumbnail_files:
+            # Return the most recent thumbnail
+            newest_thumb = max(thumbnail_files, key=lambda f: f.stat().st_mtime)
+            logger.info(f"Using newest thumbnail as fallback: {newest_thumb}")
+            return str(newest_thumb)
+        
+        logger.info("No thumbnail file found")
         return None
