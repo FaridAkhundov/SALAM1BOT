@@ -70,14 +70,7 @@ class YouTubeProcessor:
                                     logger.error(f"Progress callback failed: {e}")
                     elif d['status'] == 'finished':
                         logger.info("Download finished - 100%")
-                        if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
-                            try:
-                                future = asyncio.run_coroutine_threadsafe(
-                                    self.progress_callback("📥 Yüklənir (100%)"),
-                                    self.main_loop
-                                )
-                            except Exception as e:
-                                logger.error(f"Finished callback failed: {e}")
+                        # No callback needed - download is complete
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
