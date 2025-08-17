@@ -1,12 +1,13 @@
 [project]
-name = "repl-nix-workspace"
+name = "telegram-youtube-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Telegram bot that converts YouTube videos to MP3"
 requires-python = ">=3.11"
 dependencies = [
-    "ffmpeg-python>=0.2.0",
-    "pillow>=11.3.0",
     "python-telegram-bot==20.8",
-    "telegram>=0.0.1",
     "yt-dlp>=2024.12.13",
+    "ffmpeg-python>=0.2.0",
 ]
+
+[tool.uv]
+package = false

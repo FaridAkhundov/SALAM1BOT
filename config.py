@@ -14,8 +14,8 @@ if not BOT_TOKEN:
 MAX_FILE_SIZE_MB = 45  # Leave some buffer
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-# Download settings
-DOWNLOAD_TIMEOUT = 60  # 1 minute
+# Download settings (optimized for speed)
+DOWNLOAD_TIMEOUT = 45  # 45 seconds for faster timeout
 TEMP_DIR = "temp_downloads"
 
 # Rate limiting (simple per-user)

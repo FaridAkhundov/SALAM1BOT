@@ -23,6 +23,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 def main():
     """Main function to start the bot"""
     # Create the Application
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN is required")
     application = Application.builder().token(BOT_TOKEN).build()
     
     # Add handlers

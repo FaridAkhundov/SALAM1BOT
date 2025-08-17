@@ -26,9 +26,9 @@ class YouTubeProcessor:
         self.progress_callback = None
         self.executor = ThreadPoolExecutor(max_workers=3)  # Support for multitasking
         
-        # Configure yt-dlp options with thumbnail support
+        # Configure optimized yt-dlp options with thumbnail support
         self.ydl_opts = {
-            'format': 'bestaudio/best',
+            'format': 'bestaudio/best[filesize<45M]',  # Prioritize smaller files
             'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
             'writethumbnail': True,  # Download thumbnail
             'postprocessors': [
@@ -40,15 +40,19 @@ class YouTubeProcessor:
                 {
                     'key': 'EmbedThumbnail',  # Embed thumbnail in audio file
                     'already_have_thumbnail': False,
+                },
+                {
+                    'key': 'FFmpegMetadata',  # Add metadata support
                 }
             ],
             'quiet': True,
             'no_warnings': True,
             'noplaylist': True,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'extractor_retries': 2,
-            'fragment_retries': 2,
-            'socket_timeout': 20,
+            'extractor_retries': 1,  # Faster retries
+            'fragment_retries': 1,   # Faster retries
+            'socket_timeout': 15,    # Faster timeout
+            'concurrent_fragment_downloads': 4,  # Speed up downloads
         }
     
     async def download_and_convert(self, url: str, progress_callback=None) -> dict:
@@ -122,9 +126,9 @@ class YouTubeProcessor:
                         except:
                             pass
 
-            # Enhanced options with progress hook and thumbnail support
+            # Enhanced options with optimized thumbnail support for speed
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': 'bestaudio/best[filesize<45M]',  # Prioritize smaller files
                 'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
                 'writethumbnail': True,
                 'writeinfojson': False,
@@ -137,16 +141,20 @@ class YouTubeProcessor:
                     {
                         'key': 'EmbedThumbnail',
                         'already_have_thumbnail': False,
+                    },
+                    {
+                        'key': 'FFmpegMetadata',  # Add metadata support
                     }
                 ],
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
-                'quiet': False,  # Enable verbose output for debugging
-                'no_warnings': False,  # Show warnings for debugging
-                'socket_timeout': 15,
+                'quiet': True,  # Optimize for speed
+                'no_warnings': True,  # Optimize for speed
+                'socket_timeout': 10,  # Faster timeout
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'extractor_retries': 1,
                 'fragment_retries': 1,
+                'concurrent_fragment_downloads': 4,  # Speed up downloads
             }
             
             logger.info("Creating yt-dlp instance...")

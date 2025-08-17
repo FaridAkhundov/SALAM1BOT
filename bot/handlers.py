@@ -23,20 +23,25 @@ user_search_results = {}
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /start command"""
-    await update.message.reply_text(
-        WELCOME_MESSAGE,
-        parse_mode='Markdown'
-    )
+    if update.message:
+        await update.message.reply_text(
+            WELCOME_MESSAGE,
+            parse_mode='Markdown'
+        )
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /help command"""
-    await update.message.reply_text(
-        HELP_MESSAGE,
-        parse_mode='Markdown'
-    )
+    if update.message:
+        await update.message.reply_text(
+            HELP_MESSAGE,
+            parse_mode='Markdown'
+        )
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle text messages - both YouTube URLs and song search queries"""
+    if not update.effective_user or not update.message or not update.message.text:
+        return
+        
     user_id = update.effective_user.id
     message_text = update.message.text.strip()
     
@@ -111,7 +116,8 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
                 audio=audio_file,
                 title=clean_title,
                 duration=result["duration"],
-                performer=uploader if uploader and uploader != "Unknown Artist" else None
+                performer=uploader if uploader and uploader != "Unknown Artist" else None,
+                caption=f"🎵 {clean_title}"
             )
         
         # Update progress after successful upload
@@ -313,12 +319,14 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
                         clean_title = clean_title[1:].strip()
                         break
             
-            # Send audio with clean title only (no performer to avoid duplication)
+            # Send audio with clean title and embedded thumbnail
             await context.bot.send_audio(
                 chat_id=query.message.chat.id,
                 audio=audio_file,
                 title=clean_title,
-                duration=result["duration"]
+                duration=result["duration"],
+                performer=uploader if uploader and uploader != "Unknown Artist" else None,
+                caption=f"🎵 {clean_title}"
             )
         
         # Update final message
@@ -343,7 +351,7 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
 # Keep old function name for compatibility
 url_handler = message_handler
 
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle errors"""
     logger.error(f"Update {update} caused error {context.error}")
     
