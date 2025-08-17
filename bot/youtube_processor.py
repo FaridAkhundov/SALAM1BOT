@@ -19,9 +19,9 @@ class YouTubeProcessor:
     def __init__(self):
         Path(TEMP_DIR).mkdir(exist_ok=True)
         self.progress_callback = None
-        # Increased workers for high concurrency - supports 50+ simultaneous downloads
-        self.download_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="download")
-        self.search_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="search")
+        # Maximum workers for unlimited concurrency - supports 100+ simultaneous operations
+        self.download_executor = ThreadPoolExecutor(max_workers=50, thread_name_prefix="download")
+        self.search_executor = ThreadPoolExecutor(max_workers=25, thread_name_prefix="search")
         # Connection pooling for better performance
         self.session_pool = {}
     

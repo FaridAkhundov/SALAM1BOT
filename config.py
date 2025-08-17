@@ -7,11 +7,11 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
 
-MAX_FILE_SIZE_MB = 45
+MAX_FILE_SIZE_MB = 49  # Maximum possible for Telegram (49.5MB limit)
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-DOWNLOAD_TIMEOUT = 45
+DOWNLOAD_TIMEOUT = 300  # Increased to 5 minutes for large files
 TEMP_DIR = "temp_downloads"
-RATE_LIMIT_SECONDS = 0
+RATE_LIMIT_SECONDS = 0  # Completely disabled - unlimited requests
 AUDIO_QUALITY = "192"
 AUDIO_FORMAT = "mp3"
 
@@ -32,7 +32,8 @@ Xoş gəlmisiniz! Mən sizin üçün YouTube mahnılarını MP3 fayllarına çev
 /help - Kömək və istifadə təlimatları
 
 *Qeyd:* 
-• Telegram limitlərinə görə 45MB-dan böyük fayllar göndərilə bilməz.
+• Telegram limitlərinə görə 49MB-dan böyük fayllar göndərilə bilməz.
+• Limitsiz istifadə - istənilən qədər mahnı yükləyə bilərsiniz
 • Sözlüklə axtarılan mahnılar düzgün təqdim edilməyə bilər. Bu halda YouTube linki ilə atmağa cəhd edin.
 """
 
@@ -60,8 +61,8 @@ HELP_MESSAGE = """
 • Fayl ölçüsü yoxlanması
 
 *Məhdudiyyətlər:*
-• Maksimum fayl ölçüsü: 45MB
-• Məhdudiyyət: Hər istifadəçi üçün 30 saniyədə bir sorğu
+• Maksimum fayl ölçüsü: 49MB (Telegram limiti)
+• Məhdudiyyət: YOX - Limitsiz istifadə
 • Yalnız YouTube mahnıları
 
 *Problem yaşayırsınız?*
@@ -73,6 +74,5 @@ ERROR_MESSAGES = {
     "download_failed": "❌ Mahnı yüklənə bilmədi. Zəhmət olmasa linki yoxlayın və yenidən cəhd edin.",
     "file_too_large": f"❌ Fayl çox böyükdür ({MAX_FILE_SIZE_MB}MB-dan çox). Telegram bu qədər böyük faylları dəstəkləmir.",
     "conversion_failed": "❌ Mahnı MP3-ə çevrilə bilmədi. Zəhmət olmasa yenidən cəhd edin.",
-    "rate_limited": "⏰ Çox tez sorğu göndərirsiniz, bir az gözləyin.",
     "general_error": "❌ Xəta baş verdi. Zəhmət olmasa sonra yenidən cəhd edin."
 }

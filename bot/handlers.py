@@ -32,14 +32,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     user_id = update.effective_user.id
     message_text = update.message.text.strip()
     
-    # Rate limiting check (if enabled)
-    if RATE_LIMIT_SECONDS > 0 and user_id in user_last_request:
-        time_diff = datetime.now() - user_last_request[user_id]
-        if time_diff.total_seconds() < RATE_LIMIT_SECONDS:
-            await update.message.reply_text(ERROR_MESSAGES["rate_limited"])
-            return
-    
-    user_last_request[user_id] = datetime.now()
+    # No rate limiting - users can send unlimited requests
+    # Removed all rate limiting for maximum concurrency
     
     # Process requests concurrently without waiting - fire and forget approach
     if is_valid_youtube_url(message_text):
