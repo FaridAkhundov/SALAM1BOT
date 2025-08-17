@@ -88,26 +88,16 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
                 thumbnail_file = open(thumbnail_path, 'rb')
             
             with open(result["file_path"], 'rb') as audio_file:
-                # Clean title by removing channel/uploader name from beginning
-                clean_title = result["title"]
+                # Use original title as-is - don't clean or modify it
+                original_title = result["title"]
                 uploader = result["uploader"]
                 
-                # Remove uploader/channel name from the beginning of title if present
-                if uploader and clean_title.startswith(uploader):
-                    # Remove uploader name and any following separator (-, –, |, etc.)
-                    clean_title = clean_title[len(uploader):].strip()
-                    # Remove common separators from the beginning
-                    for sep in ['-', '–', '|', ':', '•']:
-                        if clean_title.startswith(sep):
-                            clean_title = clean_title[1:].strip()
-                            break
-                
-                # Send audio with separate thumbnail file
+                # Send audio with original title preserved
                 await context.bot.send_audio(
                     chat_id=update.effective_chat.id,
                     audio=audio_file,
                     thumbnail=thumbnail_file,
-                    title=clean_title,
+                    title=original_title,  # Keep original title exactly as it appears on YouTube
                     duration=result["duration"],
                     performer=uploader if uploader and uploader != "Unknown Artist" else None
                 )
@@ -338,26 +328,16 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
                 thumbnail_file = open(thumbnail_path, 'rb')
             
             with open(result["file_path"], 'rb') as audio_file:
-                # Clean title by removing channel/uploader name from beginning
-                clean_title = result["title"]
+                # Use original title as-is - don't clean or modify it
+                original_title = result["title"]
                 uploader = result["uploader"]
                 
-                # Remove uploader/channel name from the beginning of title if present
-                if uploader and clean_title.startswith(uploader):
-                    # Remove uploader name and any following separator (-, –, |, etc.)
-                    clean_title = clean_title[len(uploader):].strip()
-                    # Remove common separators from the beginning
-                    for sep in ['-', '–', '|', ':', '•']:
-                        if clean_title.startswith(sep):
-                            clean_title = clean_title[1:].strip()
-                            break
-                
-                # Send audio with separate thumbnail file
+                # Send audio with original title preserved
                 await context.bot.send_audio(
                     chat_id=query.message.chat.id,
                     audio=audio_file,
                     thumbnail=thumbnail_file,
-                    title=clean_title,
+                    title=original_title,  # Keep original title exactly as it appears on YouTube
                     duration=result["duration"],
                     performer=uploader if uploader and uploader != "Unknown Artist" else None
                 )

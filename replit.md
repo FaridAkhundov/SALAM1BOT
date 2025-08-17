@@ -17,6 +17,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **PROGRESS TRACKING ENHANCED (2025-08-17):** Fixed real-time progress tracking - now shows actual download percentages like "📥 Yüklənir.. (23%)", "📥 Yüklənir.. (67%)", "📥 Yüklənir.. (99%)". Progress stops at 99% and proceeds directly to upload without showing 100% or completion messages.
 
+**TITLE PRESERVATION FIXED (2025-08-17):** Fixed title preservation issue - audio files now maintain their original YouTube titles exactly as they appear, without any cleaning or modification. User requested to preserve original song names.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
