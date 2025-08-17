@@ -250,10 +250,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             
             selected_song = search_results[song_idx]
             
-            # Update message to show processing with consistent format
-            await query.edit_message_text("🔄 Sorğunuz emal olunur...")
-            
-            # Process the selected song
+            # Process the selected song with real-time progress
             await process_youtube_url_from_callback(query, context, selected_song['url'], selected_song['title'])
             
         elif callback_data.startswith("page_"):
@@ -304,6 +301,9 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT_TYPE, url: str, title: str) -> None:
     """Process YouTube URL from button callback"""
     try:
+        # Start with initial processing message
+        await query.edit_message_text("🔄 Sorğunuz emal olunur...")
+        
         # Initialize YouTube processor
         processor = YouTubeProcessor()
         
