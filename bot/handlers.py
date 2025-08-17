@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 user_last_request = {}
 user_search_results = {}
+user_search_timestamps = {}  # Track when each search was created
+user_search_sessions = {}     # Track session IDs to invalidate old searches
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
@@ -142,11 +144,14 @@ async def process_song_search(update: Update, context: ContextTypes.DEFAULT_TYPE
             await searching_msg.edit_text("❌ Heç bir mahnı tapılmadı. Fərqli axtarış sözü sınayın.")
             return
         
-        # Store search results for pagination
+        # Store search results for pagination with timestamp and session ID
+        current_session = datetime.now().timestamp()  # Use timestamp as unique session ID
         user_search_results[user_id] = search_results
+        user_search_timestamps[user_id] = datetime.now()
+        user_search_sessions[user_id] = current_session
         
-        # Create paginated keyboard for first page
-        keyboard = create_paginated_keyboard(search_results, page=0, user_id=user_id)
+        # Create paginated keyboard for first page with session ID
+        keyboard = create_paginated_keyboard(search_results, page=0, user_id=user_id, session_id=current_session)
         
         await searching_msg.edit_text(
             f"🎵 *{query}* üçün {len(search_results)} mahnı tapıldı\n\nSəhifə 1/3 - Mahnı seçin:",
@@ -158,7 +163,7 @@ async def process_song_search(update: Update, context: ContextTypes.DEFAULT_TYPE
         logger.error(f"Error searching for '{query}': {str(e)}")
         await searching_msg.edit_text(ERROR_MESSAGES["general_error"])
 
-def create_paginated_keyboard(results: list, page: int, user_id: int) -> InlineKeyboardMarkup:
+def create_paginated_keyboard(results: list, page: int, user_id: int, session_id: float) -> InlineKeyboardMarkup:
     buttons = []
     start_idx = page * 8
     end_idx = min(start_idx + 8, len(results))
@@ -170,7 +175,7 @@ def create_paginated_keyboard(results: list, page: int, user_id: int) -> InlineK
         display_title = song['title'][:50] + "..." if len(song['title']) > 50 else song['title']
         buttons.append([InlineKeyboardButton(
             f"🎵 {display_title}",
-            callback_data=f"song_{user_id}_{i}"
+            callback_data=f"song_{user_id}_{i}_{session_id}"
         )])
     
     # Add navigation buttons
@@ -178,10 +183,10 @@ def create_paginated_keyboard(results: list, page: int, user_id: int) -> InlineK
     total_pages = min(3, (len(results) + 7) // 8)  # Max 3 pages
     
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Əvvəlki", callback_data=f"page_{user_id}_{page-1}"))
+        nav_buttons.append(InlineKeyboardButton("⬅️ Əvvəlki", callback_data=f"page_{user_id}_{page-1}_{session_id}"))
     
     if page < total_pages - 1 and page < 2:  # Max 3 pages (0, 1, 2)
-        nav_buttons.append(InlineKeyboardButton("Növbəti ➡️", callback_data=f"page_{user_id}_{page+1}"))
+        nav_buttons.append(InlineKeyboardButton("Növbəti ➡️", callback_data=f"page_{user_id}_{page+1}_{session_id}"))
     
     if nav_buttons:
         buttons.append(nav_buttons)
@@ -198,14 +203,36 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     try:
         if callback_data.startswith("song_"):
             # Handle song selection
-            _, cb_user_id, song_idx = callback_data.split("_")
+            parts = callback_data.split("_")
+            if len(parts) < 4:  # Backward compatibility with old format
+                _, cb_user_id, song_idx = parts
+                cb_session_id = None
+            else:
+                _, cb_user_id, song_idx, cb_session_id = parts
+                cb_session_id = float(cb_session_id)
             cb_user_id = int(cb_user_id)
             song_idx = int(song_idx)
             
-            # Verify user owns this search
+            # Verify user owns this search and check session validity
             if cb_user_id != user_id or user_id not in user_search_results:
                 await query.edit_message_text("❌ Bu axtarış sessiyası bitib. Zəhmət olmasa yenidən axtarın.")
                 return
+            
+            # Check if this search session is still valid (not expired by newer search)
+            if cb_session_id and user_id in user_search_sessions:
+                current_session = user_search_sessions[user_id]
+                # If user has made a new search, invalidate old buttons
+                if cb_session_id != current_session:
+                    await query.edit_message_text("🔄 Bu axtarış səhifəsi köhnəlib. Yeni axtarış edilib - köhnə nəticələr deaktiv edildi.")
+                    return
+            
+            # Time-based expiry check (1 hour)
+            if user_id in user_search_timestamps:
+                current_search_time = user_search_timestamps[user_id]
+                time_diff = datetime.now() - current_search_time
+                if time_diff.total_seconds() > 3600:  # 1 hour expiry
+                    await query.edit_message_text("⏰ Bu axtarış sessiyasının müddəti bitib. Zəhmət olmasa yenidən axtarın.")
+                    return
             
             # Get selected song
             search_results = user_search_results[user_id]
@@ -223,18 +250,42 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             
         elif callback_data.startswith("page_"):
             # Handle page navigation
-            _, cb_user_id, page = callback_data.split("_")
+            parts = callback_data.split("_")
+            if len(parts) < 4:  # Backward compatibility with old format
+                _, cb_user_id, page = parts
+                cb_session_id = None
+            else:
+                _, cb_user_id, page, cb_session_id = parts
+                cb_session_id = float(cb_session_id)
             cb_user_id = int(cb_user_id)
             page = int(page)
             
-            # Verify user owns this search
+            # Verify user owns this search and check session validity
             if cb_user_id != user_id or user_id not in user_search_results:
                 await query.edit_message_text("❌ Bu axtarış sessiyası bitib. Zəhmət olmasa yenidən axtarın.")
                 return
             
+            # Check if this search session is still valid (not expired by newer search)
+            if cb_session_id and user_id in user_search_sessions:
+                current_session = user_search_sessions[user_id]
+                # If user has made a new search, invalidate old buttons
+                if cb_session_id != current_session:
+                    await query.edit_message_text("🔄 Bu axtarış səhifəsi köhnəlib. Yeni axtarış edilib - köhnə nəticələr deaktiv edildi.")
+                    return
+            
+            # Time-based expiry check (1 hour)
+            if user_id in user_search_timestamps:
+                current_search_time = user_search_timestamps[user_id]
+                time_diff = datetime.now() - current_search_time
+                if time_diff.total_seconds() > 3600:  # 1 hour expiry
+                    await query.edit_message_text("⏰ Bu axtarış sessiyasının müddəti bitib. Zəhmət olmasa yenidən axtarın.")
+                    return
+            
             # Update keyboard for new page
             search_results = user_search_results[user_id]
-            keyboard = create_paginated_keyboard(search_results, page, user_id)
+            # Get current session ID for this user
+            current_session = user_search_sessions.get(user_id, 0)
+            keyboard = create_paginated_keyboard(search_results, page, user_id, current_session)
             
             await query.edit_message_reply_markup(reply_markup=keyboard)
             

@@ -105,12 +105,13 @@ class YouTubeProcessor:
                 'geo_bypass_country': 'US',
                 # Connection pooling and keepalive
                 'keepvideo': False,
-                'max_downloads': 1,
                 'throttled_rate': None,  # No throttling for max speed
             }
             
             logger.info("Creating yt-dlp instance...")
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Create fresh instance for each download to avoid conflicts
+            ydl = yt_dlp.YoutubeDL(ydl_opts)
+            try:
                 # Extract video info first
                 logger.info("Extracting video information...")
                 info = ydl.extract_info(url, download=False)
@@ -195,6 +196,12 @@ class YouTubeProcessor:
                     "file_size": file_size,
                     "thumbnail_path": thumbnail_path
                 }
+            finally:
+                # Clean up yt-dlp instance
+                try:
+                    ydl.close()
+                except:
+                    pass
                 
         except Exception as e:
             logger.error(f"Download error: {str(e)}")
