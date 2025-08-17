@@ -5,7 +5,10 @@ Configuration settings for the Telegram YouTube to MP3 Bot
 import os
 
 # Telegram Bot Token - get from environment variable
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "5086802226:AAFK1MxDrBigvqHGlEnfvunSoiYAnvlrIuw")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if not BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
 
 # File size limits (Telegram has 50MB limit)
 MAX_FILE_SIZE_MB = 45  # Leave some buffer

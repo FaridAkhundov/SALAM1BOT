@@ -5,7 +5,9 @@ YouTube video download and MP3 conversion processor
 import os
 import asyncio
 import logging
+import time
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 import yt_dlp
 from config import (
     TEMP_DIR, MAX_FILE_SIZE_BYTES, DOWNLOAD_TIMEOUT, 
@@ -22,44 +24,51 @@ class YouTubeProcessor:
         # Create temp directory if it doesn't exist
         Path(TEMP_DIR).mkdir(exist_ok=True)
         self.progress_callback = None
+        self.executor = ThreadPoolExecutor(max_workers=3)  # Support for multitasking
         
-        # Configure yt-dlp options
+        # Configure yt-dlp options with thumbnail support
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
-            'extractaudio': True,
-            'audioformat': AUDIO_FORMAT,
-            'audioquality': AUDIO_QUALITY,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': AUDIO_FORMAT,
-                'preferredquality': AUDIO_QUALITY,
-            }],
+            'writethumbnail': True,  # Download thumbnail
+            'postprocessors': [
+                {
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': AUDIO_FORMAT,
+                    'preferredquality': AUDIO_QUALITY,
+                },
+                {
+                    'key': 'EmbedThumbnail',  # Embed thumbnail in audio file
+                    'already_have_thumbnail': False,
+                }
+            ],
             'quiet': True,
             'no_warnings': True,
-            # Add options to handle YouTube's anti-bot measures
-            'cookiefile': None,
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'extractor_retries': 3,
-            'fragment_retries': 3,
-            'retry_sleep_functions': {'http': lambda n: min(4 ** n, 60)},
-            'socket_timeout': 30,
+            'noplaylist': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'extractor_retries': 2,
+            'fragment_retries': 2,
+            'socket_timeout': 20,
         }
     
-    async def download_and_convert(self, url: str) -> dict:
+    async def download_and_convert(self, url: str, progress_callback=None) -> dict:
         """
-        Download YouTube video and convert to MP3
+        Download YouTube video and convert to MP3 with real-time progress
         
         Args:
             url (str): YouTube video URL
+            progress_callback: Callback function for progress updates
             
         Returns:
             dict: Result containing success status, file path, and metadata
         """
         try:
-            # Run the download in a thread with a simpler approach
+            # Store progress callback
+            self.progress_callback = progress_callback
+            
+            # Run the download in thread pool for multitasking
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, self._download_video, url)
+            result = await loop.run_in_executor(self.executor, self._download_video, url)
             return result
             
         except Exception as e:
@@ -71,7 +80,7 @@ class YouTubeProcessor:
     
     def _download_video(self, url: str) -> dict:
         """
-        Synchronous download function to run in executor
+        Synchronous download function to run in executor with real-time progress
         
         Args:
             url (str): YouTube video URL
@@ -82,23 +91,60 @@ class YouTubeProcessor:
         try:
             logger.info(f"Starting download for URL: {url}")
             
+            # Progress tracking variables
+            self.download_progress = 0
+            self.conversion_progress = 0
+            
+            def progress_hook(d):
+                if d['status'] == 'downloading':
+                    if d.get('total_bytes') or d.get('total_bytes_estimate'):
+                        total = d.get('total_bytes') or d.get('total_bytes_estimate')
+                        downloaded = d.get('downloaded_bytes', 0)
+                        progress = min(99, int((downloaded / total) * 100))  # Cap at 99% until complete
+                        self.download_progress = progress
+                        
+                        if self.progress_callback:
+                            try:
+                                asyncio.run_coroutine_threadsafe(
+                                    self.progress_callback(f"📥 Mahnı yüklənir... ({progress}%)"),
+                                    asyncio.get_event_loop()
+                                )
+                            except:
+                                pass
+                elif d['status'] == 'finished':
+                    self.download_progress = 100
+                    if self.progress_callback:
+                        try:
+                            asyncio.run_coroutine_threadsafe(
+                                self.progress_callback("🔄 MP3-ə çevrilir..."),
+                                asyncio.get_event_loop()
+                            )
+                        except:
+                            pass
 
-
-            # Simplified options for better reliability
+            # Enhanced options with progress hook and thumbnail support
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'outtmpl': f'{TEMP_DIR}/%(title)s.%(ext)s',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
-                'noplaylist': True,  # Only download single video, not playlist
-                'quiet': False,  # Enable output for debugging
-                'no_warnings': False,
+                'writethumbnail': True,
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    },
+                    {
+                        'key': 'EmbedThumbnail',
+                        'already_have_thumbnail': False,
+                    }
+                ],
+                'progress_hooks': [progress_hook],
+                'noplaylist': True,
+                'quiet': True,
+                'no_warnings': True,
                 'socket_timeout': 15,
                 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'extractor_retries': 1,  # Reduce retries for faster failure
+                'extractor_retries': 1,
                 'fragment_retries': 1,
             }
             
@@ -106,15 +152,7 @@ class YouTubeProcessor:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 # Extract video info first
                 logger.info("Extracting video information...")
-                try:
-                    info = ydl.extract_info(url, download=False)
-                    if info:
-                        logger.info(f"Video info extraction completed: {info.get('title', 'Unknown')}")
-                    else:
-                        logger.error("Video info extraction returned None")
-                except Exception as extract_error:
-                    logger.error(f"Failed to extract video info: {extract_error}")
-                    raise extract_error
+                info = ydl.extract_info(url, download=False)
                 
                 # Check if video is available
                 if not info:
@@ -143,6 +181,17 @@ class YouTubeProcessor:
                 # Download and convert
                 logger.info("Starting download and conversion...")
                 ydl.download([url])
+                
+                # Ensure download progress reaches 100%
+                if self.progress_callback:
+                    try:
+                        asyncio.run_coroutine_threadsafe(
+                            self.progress_callback("📥 Mahnı yüklənir... (100%)"),
+                            asyncio.get_event_loop()
+                        )
+                        time.sleep(0.5)  # Brief pause to show 100%
+                    except:
+                        pass
                     
                 logger.info("Download completed, looking for converted file...")
                 

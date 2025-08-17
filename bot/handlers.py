@@ -71,33 +71,15 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
         # Initialize YouTube processor
         processor = YouTubeProcessor()
         
-        # Simulated progress updates
-        async def simulate_progress():
+        # Real-time progress callback
+        async def update_progress(message):
             try:
-                progress_steps = [
-                    ("📥 Mahnı yüklənir... (12.3%)", 1),
-                    ("📥 Mahnı yüklənir... (28.7%)", 1.5),
-                    ("📥 Mahnı yüklənir... (45.1%)", 1),
-                    ("📥 Mahnı yüklənir... (67.4%)", 1.5),
-                    ("📥 Mahnı yüklənir... (83.9%)", 1),
-                    ("📥 Mahnı hazırlanır...", 0.5)
-                ]
-                
-                for message, delay in progress_steps:
-                    await asyncio.sleep(delay)
-                    try:
-                        await processing_msg.edit_text(message)
-                    except:
-                        break
+                await processing_msg.edit_text(message)
             except Exception as e:
-                logger.debug(f"Progress simulation error: {e}")
+                logger.debug(f"Progress update error: {e}")
 
-        # Start progress simulation and download simultaneously
-        progress_task = asyncio.create_task(simulate_progress())
-        result = await processor.download_and_convert(url)
-        
-        # Cancel progress simulation
-        progress_task.cancel()
+        # Start download with real-time progress
+        result = await processor.download_and_convert(url, progress_callback=update_progress)
         
         if not result["success"]:
             await processing_msg.edit_text(result["error"])

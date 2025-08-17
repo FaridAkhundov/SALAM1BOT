@@ -7,11 +7,14 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 Preferred communication style: Simple, everyday language.
 Bot Interface Language: Azerbaijani (all user-facing messages, commands, and responses)
 Rate Limiting: Disabled (user requested removal of 30-second limit on 2025-08-10)
-Progress Display: Simulated progress percentages during download (12.3%, 28.7%, 45.1%, 67.4%, 83.9%)
+Progress Display: UPDATED (2025-08-17) - Real-time progress tracking that reaches 100% before proceeding
 User Interface Notes: Search limitations notice moved from /help to /start command
 Language Updates: Changed "Video" to "Mahnı" in all user-facing messages (2025-08-10)
 URL Cleaning: Added automatic playlist parameter removal from YouTube URLs (2025-08-10)
 Title Cleaning: Remove channel/uploader names from audio file titles to avoid duplication (2025-08-10)
+Thumbnail Support: ADDED (2025-08-17) - Songs now include embedded thumbnails without extra text
+Multitasking: IMPLEMENTED (2025-08-17) - Concurrent processing for multiple users
+Code Cleanup: COMPLETED (2025-08-17) - Removed unnecessary code parts while maintaining functionality
 
 # System Architecture
 
