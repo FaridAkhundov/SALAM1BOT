@@ -21,8 +21,6 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **METADATA ENHANCEMENT (2025-08-17):** Added FFmpegMetadata processor to properly embed title and metadata into MP3 files. This ensures proper title display in Telegram audio messages with correct metadata.
 
-**THUMBNAIL HANDLING FIXED (2025-08-17):** Fixed thumbnail display issue by changing from file handle to byte data approach. Thumbnails are now properly loaded as bytes and sent to Telegram API for better compatibility.
-
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
