@@ -74,10 +74,10 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-            # High-performance options optimized for concurrent downloads
+            # Enhanced yt-dlp options with anti-detection measures
             ydl_opts = {
                 'format': 'bestaudio/best[filesize<45M]',
-                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',  # Unique names to prevent conflicts
+                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
                 'writethumbnail': True,
                 'writeinfojson': False,
                 'postprocessors': [
@@ -96,18 +96,32 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                # Optimized for high concurrency
-                'socket_timeout': 30,
-                'read_timeout': 30,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'extractor_retries': 2,
-                'fragment_retries': 2,
-                'concurrent_fragment_downloads': 8,  # Doubled for faster downloads
+                # Enhanced anti-detection settings
+                'socket_timeout': 60,
+                'read_timeout': 60,
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'extractor_retries': 5,
+                'fragment_retries': 5,
+                'file_access_retries': 3,
+                'retry_sleep_functions': {'http': lambda n: min(4 ** n, 60)},
+                'concurrent_fragment_downloads': 4,  # Reduced to avoid rate limiting
                 'geo_bypass': True,
                 'geo_bypass_country': 'US',
-                # Connection pooling and keepalive
                 'keepvideo': False,
-                'throttled_rate': None,  # No throttling for max speed
+                'throttled_rate': None,
+                # Additional headers to mimic real browser
+                'http_headers': {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-us,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                },
+                # Avoid YouTube detection
+                'sleep_interval': 1,
+                'max_sleep_interval': 5,
+                'sleep_interval_subtitles': 0,
             }
             
             logger.info("Creating yt-dlp instance...")
