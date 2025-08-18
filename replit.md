@@ -11,6 +11,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **THUMBNAIL ENHANCEMENT (2025-08-18):** Added EmbedThumbnail processor to properly embed thumbnails into MP3 files for better compatibility with phone music players. This ensures thumbnails are preserved when audio files are downloaded to devices.
 
+**THUMBNAIL FIX ADVANCED (2025-08-18):** Implemented manual FFmpeg thumbnail embedding as post-processing step to ensure album art is properly embedded into MP3 files. Uses direct FFmpeg commands with ID3v2.3 metadata for maximum phone compatibility.
+
 **ENHANCED (2025-08-17):** Added unlimited multitasking - users can now send 50+ downloads simultaneously. Improved session management messages in Azerbaijani for expired search results.
 
 **PROGRESS TRACKING UNIFIED (2025-08-17):** All download types (direct URL and search results) now use real-time progress tracking instead of simulated progress. Consistent experience across all download methods.

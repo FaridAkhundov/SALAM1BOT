@@ -94,8 +94,10 @@ class YouTubeProcessor:
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
                         'add_chapters': True,
+                        'embed_artwork': True,
                     }
                 ],
+                'embedthumbnail': True,
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
                 'quiet': True,
@@ -197,6 +199,20 @@ class YouTubeProcessor:
                 logger.info(f"Looking for thumbnail with title: {title}")
                 logger.info(f"Found thumbnail path: {thumbnail_path}")
                 
+                # Manual thumbnail embedding using FFmpeg
+                if thumbnail_path and os.path.exists(thumbnail_path):
+                    try:
+                        logger.info(f"Manually embedding thumbnail using FFmpeg...")
+                        embedded_file_path = self._embed_thumbnail_manually(file_path, thumbnail_path, title)
+                        if embedded_file_path and embedded_file_path != file_path:
+                            # Replace original file with embedded version
+                            os.remove(file_path)
+                            file_path = embedded_file_path
+                            file_size = os.path.getsize(file_path)
+                            logger.info(f"Thumbnail embedded successfully! New file size: {file_size} bytes")
+                    except Exception as e:
+                        logger.warning(f"Failed to embed thumbnail manually: {e}")
+                
                 logger.info(f"Conversion successful! File size: {file_size} bytes")
                 return {
                     "success": True,
@@ -281,6 +297,46 @@ class YouTubeProcessor:
         except Exception as e:
             logger.error(f"Search error: {str(e)}")
             return []
+    
+    def _embed_thumbnail_manually(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
+        try:
+            import subprocess
+            
+            # Create output path with embedded suffix
+            base_name = os.path.splitext(mp3_path)[0]
+            embedded_path = f"{base_name}_embedded.mp3"
+            
+            # FFmpeg command to embed thumbnail as album art
+            cmd = [
+                'ffmpeg',
+                '-i', mp3_path,        # Input MP3 file
+                '-i', thumbnail_path,  # Input thumbnail file
+                '-map', '0:0',         # Map audio from first input
+                '-map', '1:0',         # Map image from second input
+                '-c', 'copy',          # Copy audio without re-encoding
+                '-id3v2_version', '3', # Use ID3v2.3 for better compatibility
+                '-metadata:s:v', 'title=Album cover',
+                '-metadata:s:v', 'comment=Cover (front)',
+                '-disposition:v', 'attached_pic',  # Mark image as attached picture
+                '-y',                  # Overwrite output file
+                embedded_path
+            ]
+            
+            logger.info(f"Running FFmpeg command: {' '.join(cmd)}")
+            
+            # Run FFmpeg with timeout
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0 and os.path.exists(embedded_path):
+                logger.info("Thumbnail embedding successful!")
+                return embedded_path
+            else:
+                logger.error(f"FFmpeg failed: {result.stderr}")
+                return mp3_path
+                
+        except Exception as e:
+            logger.error(f"Manual embedding failed: {e}")
+            return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
         # Clean title for filename matching
