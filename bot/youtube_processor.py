@@ -94,7 +94,6 @@ class YouTubeProcessor:
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
                         'add_chapters': True,
-                        'embed_artwork': True,
                     }
                 ],
                 'embedthumbnail': True,
