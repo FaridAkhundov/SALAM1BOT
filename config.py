@@ -2,10 +2,10 @@
 
 import os
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
+    raise ValueError("BOT_TOKEN environment variable is required")
 
 MAX_FILE_SIZE_MB = 49  # Maximum possible for Telegram (49.5MB limit)
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
