@@ -87,147 +87,80 @@ class YouTubeProcessor:
                         'preferredquality': '192',
                     },
                     {
-                        'key': 'EmbedThumbnail',
-                        'already_have_thumbnail': False,
-                    },
-                    {
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
-                        'add_chapters': True,
                     }
                 ],
-                'embedthumbnail': True,
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                # Enhanced anti-detection settings
                 'socket_timeout': 60,
                 'read_timeout': 60,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'extractor_retries': 5,
-                'fragment_retries': 5,
-                'file_access_retries': 3,
-                'retry_sleep_functions': {'http': lambda n: min(4 ** n, 60)},
-                'concurrent_fragment_downloads': 4,  # Reduced to avoid rate limiting
-                'geo_bypass': True,
-                'geo_bypass_country': 'US',
+                'extractor_retries': 3,
+                'fragment_retries': 3,
+                'concurrent_fragment_downloads': 4,
                 'keepvideo': False,
-                'throttled_rate': None,
-                # Additional headers to mimic real browser
-                'http_headers': {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-us,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                },
-                # Avoid YouTube detection
-                'sleep_interval': 1,
-                'max_sleep_interval': 5,
-                'sleep_interval_subtitles': 0,
             }
             
-            logger.info("Creating yt-dlp instance...")
-            # Create fresh instance for each download to avoid conflicts
-            ydl = yt_dlp.YoutubeDL(ydl_opts)
-            try:
-                # Extract video info first
-                logger.info("Extracting video information...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
-                # Check if video is available
                 if not info:
-                    logger.error("Failed to extract video information")
                     return {
                         "success": False,
                         "error": ERROR_MESSAGES["download_failed"]
                     }
                 
-                # Get video metadata
                 title = info.get('title', 'Unknown Title')
                 uploader = info.get('uploader', 'Unknown Artist')
                 duration = info.get('duration', 0)
                 
-                logger.info(f"Video info - Title: {title}, Duration: {duration}s, Uploader: {uploader}")
-                
-                # Estimate file size (rough approximation)
-                estimated_size = duration * 24000  # ~192kbps in bytes per second
+                estimated_size = duration * 24000
                 if estimated_size > MAX_FILE_SIZE_BYTES:
-                    logger.error(f"File too large: estimated {estimated_size} bytes")
                     return {
                         "success": False,
                         "error": ERROR_MESSAGES["file_too_large"]
                     }
                 
-                # Download and convert
-                logger.info("Starting download and conversion...")
                 ydl.download([url])
-                
-                # No final completion message needed
-                    
-                logger.info("Download completed, looking for converted file...")
-                
-                # Find the converted file
-                file_path = self._find_converted_file(title)
-                if not file_path or not os.path.exists(file_path):
-                    logger.error(f"Converted file not found. Expected pattern: {title}")
-                    # List files in temp directory for debugging
-                    temp_files = os.listdir(TEMP_DIR) if os.path.exists(TEMP_DIR) else []
-                    logger.error(f"Files in temp directory: {temp_files}")
-                    return {
-                        "success": False,
-                        "error": ERROR_MESSAGES["conversion_failed"]
-                    }
-                
-                logger.info(f"Found converted file: {file_path}")
-                
-                # Check actual file size
-                file_size = os.path.getsize(file_path)
-                if file_size > MAX_FILE_SIZE_BYTES:
-                    logger.error(f"File too large after conversion: {file_size} bytes")
-                    os.remove(file_path)
-                    return {
-                        "success": False,
-                        "error": ERROR_MESSAGES["file_too_large"]
-                    }
-                
-                # Find thumbnail file
-                thumbnail_path = self._find_thumbnail_file(title)
-                logger.info(f"Looking for thumbnail with title: {title}")
-                logger.info(f"Found thumbnail path: {thumbnail_path}")
-                
-                # Manual thumbnail embedding using FFmpeg
-                if thumbnail_path and os.path.exists(thumbnail_path):
-                    try:
-                        logger.info(f"Manually embedding thumbnail using FFmpeg...")
-                        embedded_file_path = self._embed_thumbnail_manually(file_path, thumbnail_path, title)
-                        if embedded_file_path and embedded_file_path != file_path:
-                            # Replace original file with embedded version
-                            os.remove(file_path)
-                            file_path = embedded_file_path
-                            file_size = os.path.getsize(file_path)
-                            logger.info(f"Thumbnail embedded successfully! New file size: {file_size} bytes")
-                    except Exception as e:
-                        logger.warning(f"Failed to embed thumbnail manually: {e}")
-                
-                logger.info(f"Conversion successful! File size: {file_size} bytes")
+            
+            file_path = self._find_converted_file(title)
+            if not file_path or not os.path.exists(file_path):
                 return {
-                    "success": True,
-                    "file_path": file_path,
-                    "title": title,
-                    "uploader": uploader,
-                    "duration": duration,
-                    "file_size": file_size,
-                    "thumbnail_path": thumbnail_path
+                    "success": False,
+                    "error": ERROR_MESSAGES["conversion_failed"]
                 }
-            finally:
-                # Clean up yt-dlp instance
+            
+            file_size = os.path.getsize(file_path)
+            if file_size > MAX_FILE_SIZE_BYTES:
+                os.remove(file_path)
+                return {
+                    "success": False,
+                    "error": ERROR_MESSAGES["file_too_large"]
+                }
+            
+            thumbnail_path = self._find_thumbnail_file(title)
+            
+            if thumbnail_path and os.path.exists(thumbnail_path):
                 try:
-                    ydl.close()
-                except:
-                    pass
+                    embedded_file_path = self._embed_thumbnail_manually(file_path, thumbnail_path, title)
+                    if embedded_file_path and embedded_file_path != file_path:
+                        os.remove(file_path)
+                        file_path = embedded_file_path
+                        file_size = os.path.getsize(file_path)
+                except Exception as e:
+                    logger.warning(f"Thumbnail embedding failed: {e}")
+            
+            return {
+                "success": True,
+                "file_path": file_path,
+                "title": title,
+                "uploader": uploader,
+                "duration": duration,
+                "file_size": file_size,
+                "thumbnail_path": thumbnail_path
+            }
                 
         except Exception as e:
             logger.error(f"Download error: {str(e)}")
@@ -250,47 +183,33 @@ class YouTubeProcessor:
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
         try:
-            # High-performance search options for concurrent operations
             search_opts = {
                 'quiet': True,
                 'no_warnings': True,
-                'extract_flat': True,  # Don't download, just get metadata
+                'extract_flat': True,
                 'default_search': 'ytsearch',
                 'socket_timeout': 15,
                 'read_timeout': 15,
-                'geo_bypass': True,
-                'geo_bypass_country': 'US',
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             }
             
             with yt_dlp.YoutubeDL(search_opts) as ydl:
-                # Search for videos
                 search_query = f"ytsearch{max_results}:{query}"
                 search_results = ydl.extract_info(search_query, download=False)
                 
                 videos = []
                 if search_results and 'entries' in search_results:
                     for entry in search_results['entries']:
-                        if entry:
-                            video_id = entry.get('id', '')
-                            # Skip if no video ID or if it's a playlist/channel
-                            if not video_id or len(video_id) != 11:
-                                continue
-                            
-                            # Basic filtering for obviously problematic entries
+                        if entry and entry.get('id') and len(entry.get('id', '')) == 11:
                             title = entry.get('title', 'Unknown Title')
-                            if not title or title in ['[Deleted video]', '[Private video]', 'Deleted video', 'Private video']:
-                                continue
-                                
-                            videos.append({
-                                'title': title,
-                                'url': f"https://www.youtube.com/watch?v={video_id}",
-                                'uploader': entry.get('uploader', 'Unknown Artist'),
-                                'duration': entry.get('duration', 0),
-                                'id': video_id
-                            })
+                            if title and title not in ['[Deleted video]', '[Private video]']:
+                                videos.append({
+                                    'title': title,
+                                    'url': f"https://www.youtube.com/watch?v={entry['id']}",
+                                    'uploader': entry.get('uploader', 'Unknown Artist'),
+                                    'duration': entry.get('duration', 0),
+                                    'id': entry['id']
+                                })
                 
-                logger.info(f"Found {len(videos)} videos for query: {query}")
                 return videos
                 
         except Exception as e:
@@ -301,53 +220,31 @@ class YouTubeProcessor:
         try:
             import subprocess
             
-            # Create output path with embedded suffix
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
-            # Convert thumbnail to JPEG if it's WebP (MP3 doesn't support WebP)
             if thumbnail_path.lower().endswith('.webp'):
                 jpeg_path = thumbnail_path.replace('.webp', '.jpg')
-                convert_cmd = ['ffmpeg', '-i', thumbnail_path, '-y', jpeg_path]
-                try:
-                    subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
-                    if os.path.exists(jpeg_path):
-                        thumbnail_path = jpeg_path
-                        logger.info(f"Converted thumbnail to JPEG: {jpeg_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to convert thumbnail to JPEG: {e}")
+                subprocess.run(['ffmpeg', '-i', thumbnail_path, '-y', jpeg_path], 
+                             capture_output=True, timeout=10)
+                if os.path.exists(jpeg_path):
+                    thumbnail_path = jpeg_path
             
-            # FFmpeg command to embed thumbnail as album art
             cmd = [
-                'ffmpeg',
-                '-i', mp3_path,        # Input MP3 file
-                '-i', thumbnail_path,  # Input thumbnail file
-                '-map', '0:0',         # Map audio from first input
-                '-map', '1:0',         # Map image from second input
-                '-c:a', 'copy',        # Copy audio without re-encoding
-                '-c:v', 'mjpeg',       # Encode image as JPEG
-                '-id3v2_version', '3', # Use ID3v2.3 for better compatibility
-                '-metadata:s:v', 'title=Album cover',
-                '-metadata:s:v', 'comment=Cover (front)',
-                '-disposition:v', 'attached_pic',  # Mark image as attached picture
-                '-y',                  # Overwrite output file
-                embedded_path
+                'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
+                '-map', '0:0', '-map', '1:0', '-c:a', 'copy', '-c:v', 'mjpeg',
+                '-id3v2_version', '3', '-disposition:v', 'attached_pic',
+                '-y', embedded_path
             ]
             
-            logger.info(f"Running FFmpeg command: {' '.join(cmd)}")
-            
-            # Run FFmpeg with timeout
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(cmd, capture_output=True, timeout=30)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
-                logger.info("Thumbnail embedding successful!")
                 return embedded_path
             else:
-                logger.error(f"FFmpeg failed: {result.stderr}")
                 return mp3_path
                 
-        except Exception as e:
-            logger.error(f"Manual embedding failed: {e}")
+        except Exception:
             return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
@@ -377,39 +274,18 @@ class YouTubeProcessor:
     def _find_thumbnail_file(self, title: str) -> str:
         temp_path = Path(TEMP_DIR)
         if not temp_path.exists():
-            logger.info("Temp directory does not exist")
             return None
-            
-        # List all files in temp directory for debugging
-        all_files = list(temp_path.glob("*"))
-        logger.info(f"All files in temp directory: {[f.name for f in all_files]}")
         
-        # Look for common thumbnail extensions
         for ext in ['.webp', '.jpg', '.jpeg', '.png']:
-            # Look for exact match first
-            exact_file = temp_path / f"{title}{ext}"
-            if exact_file.exists():
-                logger.info(f"Found exact thumbnail match: {exact_file}")
-                return str(exact_file)
-            
-            # Look for files containing the title or similar pattern
             for file_path in temp_path.glob(f"*{ext}"):
-                logger.info(f"Checking thumbnail file: {file_path.name}")
-                # Check if title is in filename (more flexible matching)
                 if any(word.lower() in file_path.stem.lower() for word in title.split() if len(word) > 3):
-                    logger.info(f"Found thumbnail match: {file_path}")
                     return str(file_path)
         
-        # Just grab any thumbnail file as last resort
         thumbnail_files = []
         for ext in ['.webp', '.jpg', '.jpeg', '.png']:
             thumbnail_files.extend(temp_path.glob(f"*{ext}"))
         
         if thumbnail_files:
-            # Return the most recent thumbnail
-            newest_thumb = max(thumbnail_files, key=lambda f: f.stat().st_mtime)
-            logger.info(f"Using newest thumbnail as fallback: {newest_thumb}")
-            return str(newest_thumb)
+            return str(max(thumbnail_files, key=lambda f: f.stat().st_mtime))
         
-        logger.info("No thumbnail file found")
         return None
