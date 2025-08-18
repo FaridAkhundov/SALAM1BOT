@@ -305,6 +305,18 @@ class YouTubeProcessor:
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
+            # Convert thumbnail to JPEG if it's WebP (MP3 doesn't support WebP)
+            if thumbnail_path.lower().endswith('.webp'):
+                jpeg_path = thumbnail_path.replace('.webp', '.jpg')
+                convert_cmd = ['ffmpeg', '-i', thumbnail_path, '-y', jpeg_path]
+                try:
+                    subprocess.run(convert_cmd, capture_output=True, text=True, timeout=10)
+                    if os.path.exists(jpeg_path):
+                        thumbnail_path = jpeg_path
+                        logger.info(f"Converted thumbnail to JPEG: {jpeg_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to convert thumbnail to JPEG: {e}")
+            
             # FFmpeg command to embed thumbnail as album art
             cmd = [
                 'ffmpeg',
@@ -312,7 +324,8 @@ class YouTubeProcessor:
                 '-i', thumbnail_path,  # Input thumbnail file
                 '-map', '0:0',         # Map audio from first input
                 '-map', '1:0',         # Map image from second input
-                '-c', 'copy',          # Copy audio without re-encoding
+                '-c:a', 'copy',        # Copy audio without re-encoding
+                '-c:v', 'mjpeg',       # Encode image as JPEG
                 '-id3v2_version', '3', # Use ID3v2.3 for better compatibility
                 '-metadata:s:v', 'title=Album cover',
                 '-metadata:s:v', 'comment=Cover (front)',
