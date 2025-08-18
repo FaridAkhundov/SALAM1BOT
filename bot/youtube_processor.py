@@ -87,6 +87,10 @@ class YouTubeProcessor:
                         'preferredquality': '192',
                     },
                     {
+                        'key': 'EmbedThumbnail',
+                        'already_have_thumbnail': False,
+                    },
+                    {
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
                         'add_chapters': True,

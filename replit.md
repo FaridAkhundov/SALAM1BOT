@@ -9,6 +9,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **VERIFIED (2025-08-18):** Bot fully operational with scheduler started and application running. Successfully resolved all ModuleNotFoundError issues with telegram package imports. Migration from Replit Agent to standard environment 100% complete and ready for production use.
 
+**THUMBNAIL ENHANCEMENT (2025-08-18):** Added EmbedThumbnail processor to properly embed thumbnails into MP3 files for better compatibility with phone music players. This ensures thumbnails are preserved when audio files are downloaded to devices.
+
 **ENHANCED (2025-08-17):** Added unlimited multitasking - users can now send 50+ downloads simultaneously. Improved session management messages in Azerbaijani for expired search results.
 
 **PROGRESS TRACKING UNIFIED (2025-08-17):** All download types (direct URL and search results) now use real-time progress tracking instead of simulated progress. Consistent experience across all download methods.
