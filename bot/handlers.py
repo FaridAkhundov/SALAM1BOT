@@ -147,7 +147,14 @@ async def process_song_search(update: Update, context: ContextTypes.DEFAULT_TYPE
         search_results = await processor.search_youtube(query, max_results=24)
         
         if not search_results:
-            await searching_msg.edit_text("❌ Heç bir mahnı tapılmadı. Fərqli axtarış sözü sınayın.")
+            await searching_msg.edit_text(
+                "❌ Axtarış nəticəsi tapılmadı.\n\n" +
+                "Səbəblər:\n" +
+                "• İnternet bağlantısı problemi\n" +
+                "• Axtarış sorğusu çox spesifik\n" +
+                "• YouTube xidməti müvəqqəti əlçatan deyil\n\n" +
+                "🔄 Fərqli açar sözlər istifadə edin və ya bir neçə dəqiqə sonra yenidən cəhd edin."
+            )
             return
         
         # Store search results for pagination with timestamp and session ID

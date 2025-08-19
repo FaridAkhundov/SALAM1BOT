@@ -74,5 +74,8 @@ ERROR_MESSAGES = {
     "download_failed": "❌ Mahnı yüklənə bilmədi. Zəhmət olmasa linki yoxlayın və yenidən cəhd edin.",
     "file_too_large": f"❌ Fayl çox böyükdür ({MAX_FILE_SIZE_MB}MB-dan çox). Telegram bu qədər böyük faylları dəstəkləmir.",
     "conversion_failed": "❌ Mahnı MP3-ə çevrilə bilmədi. Zəhmət olmasa yenidən cəhd edin.",
-    "general_error": "❌ Xəta baş verdi. Zəhmət olmasa sonra yenidən cəhd edin."
+    "general_error": "❌ Xəta baş verdi. Zəhmət olmasa sonra yenidən cəhd edin.",
+    "connection_error": "❌ İnternet bağlantısı problemi. Bir neçə dəqiqə gözləyin və yenidən cəhd edin.",
+    "timeout_error": "❌ Zaman aşımı baş verdi. Video çox böyük ola bilər. Yenidən cəhd edin.",
+    "search_failed": "❌ Axtarış uğursuz oldu. İnternet bağlantınızı yoxlayın və yenidən cəhd edin."
 }

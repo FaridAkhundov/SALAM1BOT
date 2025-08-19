@@ -93,7 +93,7 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-            # Enhanced yt-dlp options with anti-detection measures
+            # Enhanced yt-dlp options with improved connection handling
             ydl_opts = {
                 'format': 'bestaudio/best[filesize<45M]',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -109,42 +109,115 @@ class YouTubeProcessor:
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
                     },
-
                 ],
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                'socket_timeout': 120,
-                'read_timeout': 120,
-                'extractor_retries': 5,
-                'fragment_retries': 5,
-                'retries': 3,
-                'concurrent_fragment_downloads': 4,
+                # Connection and timeout improvements
+                'socket_timeout': 30,  # Reduced from 120 to 30 seconds
+                'http_timeout': 30,    # Added HTTP timeout
+                'extractor_retries': 3,  # Reduced retries to avoid hanging
+                'fragment_retries': 3,   # Reduced fragment retries
+                'retries': 2,           # Reduced main retries
+                'file_access_retries': 3,
+                'concurrent_fragment_downloads': 1,  # Reduced concurrency for stability
                 'keepvideo': False,
+                # User-Agent to avoid detection
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                },
+                # Additional stability options
+                'force_json': False,
+                'ignoreerrors': False,
+                'abort_on_error': True,  # Fail fast instead of hanging
             }
             
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                
-                if not info:
-                    return {
-                        "success": False,
-                        "error": ERROR_MESSAGES["download_failed"]
-                    }
-                
-                title = info.get('title', 'Unknown Title')
-                uploader = info.get('uploader', 'Unknown Artist')
-                duration = info.get('duration', 0)
-                
-                estimated_size = duration * 24000
-                if estimated_size > MAX_FILE_SIZE_BYTES:
-                    return {
-                        "success": False,
-                        "error": ERROR_MESSAGES["file_too_large"]
-                    }
-                
-                ydl.download([url])
+            # Implement retry mechanism with exponential backoff
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                try:
+                    logger.info(f"Download attempt {attempt + 1} for URL: {url}")
+                    
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        # First extract info
+                        info = ydl.extract_info(url, download=False)
+                        
+                        if not info:
+                            if attempt == max_attempts - 1:  # Last attempt
+                                return {
+                                    "success": False,
+                                    "error": "❌ Video məlumatları alına bilmədi. Link düzgün olduğundan əmin olun."
+                                }
+                            continue
+                        
+                        title = info.get('title', 'Unknown Title')
+                        uploader = info.get('uploader', 'Unknown Artist')
+                        duration = info.get('duration', 0)
+                        
+                        estimated_size = duration * 24000
+                        if estimated_size > MAX_FILE_SIZE_BYTES:
+                            return {
+                                "success": False,
+                                "error": ERROR_MESSAGES["file_too_large"]
+                            }
+                        
+                        # Now download the video
+                        logger.info(f"Starting download for: {title}")
+                        ydl.download([url])
+                        break  # Success, exit retry loop
+                        
+                except yt_dlp.utils.ExtractorError as e:
+                    error_msg = str(e).lower()
+                    logger.error(f"Extractor error on attempt {attempt + 1}: {e}")
+                    
+                    if attempt == max_attempts - 1:  # Last attempt
+                        if "unavailable" in error_msg or "not available" in error_msg:
+                            return {
+                                "success": False,
+                                "error": "❌ Video mövcud deyil və ya giriş məhdudlaşdırılıb."
+                            }
+                        elif "copyright" in error_msg:
+                            return {
+                                "success": False,
+                                "error": "❌ Müəlliflik hüquqları səbəbindən video əlçatan deyil."
+                            }
+                        else:
+                            return {
+                                "success": False,
+                                "error": f"❌ Video yüklənə bilmədi: {str(e)[:100]}"
+                            }
+                    
+                    # Wait before retry (exponential backoff)
+                    import time
+                    time.sleep(2 ** attempt)
+                    continue
+                    
+                except (ConnectionError, OSError, Exception) as e:
+                    error_msg = str(e).lower()
+                    logger.error(f"Connection/OS error on attempt {attempt + 1}: {e}")
+                    
+                    if attempt == max_attempts - 1:  # Last attempt
+                        if "getaddrinfo failed" in error_msg or "connection" in error_msg:
+                            return {
+                                "success": False,
+                                "error": "❌ İnternet bağlantısı problemi. Bir neçə dəqiqə sonra yenidən cəhd edin."
+                            }
+                        elif "timeout" in error_msg:
+                            return {
+                                "success": False,
+                                "error": "❌ Zaman aşımı. Video çox böyük ola bilər. Yenidən cəhd edin."
+                            }
+                        else:
+                            return {
+                                "success": False,
+                                "error": f"❌ Sistem xətası: {str(e)[:100]}"
+                            }
+                    
+                    # Wait before retry (exponential backoff)
+                    import time
+                    time.sleep(2 ** attempt)
+                    continue
             
             file_path = self._find_converted_file(title)
             if not file_path or not os.path.exists(file_path):
@@ -217,39 +290,69 @@ class YouTubeProcessor:
             return []
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
-        try:
-            search_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'extract_flat': True,
-                'default_search': 'ytsearch',
-                'socket_timeout': 60,
-                'read_timeout': 60,
-            }
-            
-            with yt_dlp.YoutubeDL(search_opts) as ydl:
-                search_query = f"ytsearch{max_results}:{query}"
-                search_results = ydl.extract_info(search_query, download=False)
+        # Implement retry mechanism for search as well
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                logger.info(f"Search attempt {attempt + 1} for query: {query}")
                 
-                videos = []
-                if search_results and 'entries' in search_results:
-                    for entry in search_results['entries']:
-                        if entry and entry.get('id') and len(entry.get('id', '')) == 11:
-                            title = entry.get('title', 'Unknown Title')
-                            if title and title not in ['[Deleted video]', '[Private video]']:
-                                videos.append({
-                                    'title': title,
-                                    'url': f"https://www.youtube.com/watch?v={entry['id']}",
-                                    'uploader': entry.get('uploader', 'Unknown Artist'),
-                                    'duration': entry.get('duration', 0),
-                                    'id': entry['id']
-                                })
+                search_opts = {
+                    'quiet': True,
+                    'no_warnings': True,
+                    'extract_flat': True,
+                    'default_search': 'ytsearch',
+                    'socket_timeout': 30,  # Reduced timeout
+                    'http_timeout': 30,    # Added HTTP timeout
+                    'extractor_retries': 2,  # Reduced retries
+                    'retries': 1,           # Reduced retries
+                    'abort_on_error': True,  # Fail fast
+                    # User-Agent to avoid detection
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    },
+                }
                 
-                return videos
+                with yt_dlp.YoutubeDL(search_opts) as ydl:
+                    search_query = f"ytsearch{max_results}:{query}"
+                    search_results = ydl.extract_info(search_query, download=False)
+                    
+                    videos = []
+                    if search_results and 'entries' in search_results:
+                        for entry in search_results['entries']:
+                            if entry and entry.get('id') and len(entry.get('id', '')) == 11:
+                                title = entry.get('title', 'Unknown Title')
+                                if title and title not in ['[Deleted video]', '[Private video]']:
+                                    videos.append({
+                                        'title': title,
+                                        'url': f"https://www.youtube.com/watch?v={entry['id']}",
+                                        'uploader': entry.get('uploader', 'Unknown Artist'),
+                                        'duration': entry.get('duration', 0),
+                                        'id': entry['id']
+                                    })
+                    
+                    return videos
+                    
+            except (ConnectionError, OSError, Exception) as e:
+                error_msg = str(e).lower()
+                logger.error(f"Search error on attempt {attempt + 1}: {e}")
                 
-        except Exception as e:
-            logger.error(f"Search error: {str(e)}")
-            return []
+                if attempt == max_attempts - 1:  # Last attempt
+                    if "getaddrinfo failed" in error_msg or "connection" in error_msg:
+                        logger.error("Search failed due to connection error")
+                        return []  # Return empty list to indicate search failure
+                    elif "timeout" in error_msg:
+                        logger.error("Search failed due to timeout")
+                        return []
+                    else:
+                        logger.error(f"Search failed with error: {error_msg}")
+                        return []
+                
+                # Wait before retry
+                import time
+                time.sleep(2 ** attempt)
+                continue
+                
+        return []  # Fallback
     
     def _embed_thumbnail_with_ffmpeg(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
         try:
