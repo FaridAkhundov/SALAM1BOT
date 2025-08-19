@@ -369,10 +369,7 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
             files_to_cleanup.append(result["thumbnail_path"])
         cleanup_temp_files(files_to_cleanup)
         
-        # Clean up search results for this user
-        user_id = query.from_user.id
-        if user_id in user_search_results:
-            del user_search_results[user_id]
+
         
     except Exception as e:
         logger.error(f"Error processing URL from callback {url}: {str(e)}")
@@ -382,7 +379,7 @@ async def process_youtube_url_from_callback(query, context: ContextTypes.DEFAULT
         else:
             await query.edit_message_text(f"❌ Yüklənmə xətası: {title}")
 
-url_handler = message_handler
+
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.error(f"Update {update} caused error {context.error}")

@@ -5,7 +5,6 @@ Main entry point for the bot application
 """
 
 import logging
-import asyncio
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 from config import BOT_TOKEN
 from bot.handlers import start_handler, help_handler, message_handler, button_callback_handler, error_handler

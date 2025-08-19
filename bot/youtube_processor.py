@@ -363,7 +363,6 @@ class YouTubeProcessor:
         try:
             import subprocess
             import shutil
-            import eyed3
             
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
@@ -392,42 +391,8 @@ class YouTubeProcessor:
                 except subprocess.CalledProcessError as e:
                     logger.warning(f"Failed to resize thumbnail: {e}")
             
-            # Try eyeD3 method first (most compatible with devices)
-            try:
-                # Copy original file
-                shutil.copy2(mp3_path, embedded_path)
-                
-                # Load MP3 with eyeD3
-                audiofile = eyed3.load(embedded_path)
-                if audiofile and audiofile.tag:
-                    # Read thumbnail image
-                    with open(thumbnail_path, 'rb') as img_file:
-                        image_data = img_file.read()
-                    
-                    # Clear existing images (fix the eyeD3 warning)
-                    try:
-                        for img in list(audiofile.tag.images):
-                            audiofile.tag.images.remove(img.description)
-                    except Exception:
-                        # If clearing fails, proceed anyway
-                        pass
-                    
-                    # Add thumbnail as front cover
-                    audiofile.tag.images.set(3, image_data, "image/jpeg", "Front cover")
-                    
-                    # Save with ID3v2.3 for maximum compatibility
-                    audiofile.tag.save(version=eyed3.id3.ID3_V2_3)
-                    
-                    logger.info(f"eyeD3 thumbnail embedding successful for: {title}")
-                    return embedded_path
-                else:
-                    logger.warning("eyeD3 could not load MP3 file")
-                    
-            except Exception as e:
-                logger.warning(f"eyeD3 embedding failed: {e}")
-                # Fall back to FFmpeg method
-                
-            # Fallback to FFmpeg method if eyeD3 fails
+            # Use FFmpeg method directly (more reliable than eyeD3)
+
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
                 '-map', '0:a', '-map', '1:v',
@@ -441,19 +406,18 @@ class YouTubeProcessor:
                 '-y', embedded_path
             ]
             
-            logger.info(f"Falling back to FFmpeg: {' '.join(cmd)}")
+            logger.info(f"Using FFmpeg for thumbnail embedding: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, timeout=120)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
                 logger.info(f"FFmpeg embedding successful. Output size: {os.path.getsize(embedded_path)} bytes")
                 return embedded_path
             else:
-                error_msg = result.stderr.decode() if result.stderr else 'Unknown error'
-                logger.error(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}, Error: {error_msg}")
+                logger.warning(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}")
                 return mp3_path
                 
         except Exception as e:
-            logger.error(f"Exception during thumbnail embedding: {e}")
+            logger.warning(f"Thumbnail embedding failed: {e}")
             return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
