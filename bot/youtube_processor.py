@@ -146,7 +146,7 @@ class YouTubeProcessor:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
                     info = ydl.extract_info(url, download=False)
-                except yt_dlp.utils.ExtractorError as e:
+                except (yt_dlp.utils.ExtractorError, yt_dlp.utils.DownloadError) as e:
                     error_msg = str(e)
                     if any(phrase in error_msg for phrase in [
                         "Sign in to confirm you're not a bot",
@@ -187,7 +187,7 @@ class YouTubeProcessor:
                                     }
                                 },
                             },
-                            # Minimal configuration
+                            # Minimal configuration with no cookies
                             {
                                 'format': 'bestaudio/best[filesize<45M]',
                                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -206,6 +206,23 @@ class YouTubeProcessor:
                                 'http_headers': {
                                     'User-Agent': 'yt-dlp/2025.08.11',
                                 },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
+                            },
+                            # Ultra minimal - no postprocessors
+                            {
+                                'format': 'bestaudio',
+                                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
+                                'noplaylist': True,
+                                'quiet': True,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
                             }
                         ]
                         
@@ -214,14 +231,14 @@ class YouTubeProcessor:
                         
                         for i, config in enumerate(fallback_configs):
                             try:
-                                logger.info(f"Trying fallback configuration {i+1}/3...")
+                                logger.info(f"Trying fallback configuration {i+1}/{len(fallback_configs)}...")
                                 with yt_dlp.YoutubeDL(config) as fallback_ydl:
                                     info = fallback_ydl.extract_info(url, download=False)
                                     successful_config = config
-                                    logger.info(f"Fallback configuration {i+1} successful!")
+                                    logger.info(f"✓ Fallback configuration {i+1} successful!")
                                     break
                             except Exception as fallback_error:
-                                logger.warning(f"Fallback {i+1} failed: {str(fallback_error)[:100]}")
+                                logger.warning(f"✗ Fallback {i+1} failed: {str(fallback_error)[:100]}")
                                 continue
                         
                         if not info:
