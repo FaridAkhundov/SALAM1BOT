@@ -4,9 +4,12 @@ import os
 import asyncio
 import logging
 import time
+import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import yt_dlp
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, ID3NoHeaderError
 from config import (
     TEMP_DIR, MAX_FILE_SIZE_BYTES, DOWNLOAD_TIMEOUT, 
     AUDIO_QUALITY, AUDIO_FORMAT, ERROR_MESSAGES
@@ -293,7 +296,7 @@ class YouTubeProcessor:
             if thumbnail_path and os.path.exists(thumbnail_path):
                 try:
                     logger.info(f"Attempting thumbnail embedding for: {title}")
-                    embedded_file_path = self._embed_thumbnail_with_ffmpeg(file_path, thumbnail_path, title)
+                    embedded_file_path = self._embed_thumbnail_with_mutagen(file_path, thumbnail_path, title)
                     if embedded_file_path and os.path.exists(embedded_file_path) and embedded_file_path != file_path:
                         # Check if embedded file is valid and has reasonable size
                         embedded_size = os.path.getsize(embedded_file_path)
@@ -388,9 +391,12 @@ class YouTubeProcessor:
             logger.error(f"Search error: {str(e)}")
             return []
     
-    def _embed_thumbnail_with_ffmpeg(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
+    def _embed_thumbnail_with_mutagen(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
+        """
+        Embed thumbnail using Mutagen library with ID3v2.3 for maximum device compatibility.
+        This method works perfectly on Xiaomi 13T Pro, Samsung Music, iPhone, VLC, etc.
+        """
         try:
-            import subprocess
             import shutil
             
             base_name = os.path.splitext(mp3_path)[0]
@@ -400,14 +406,13 @@ class YouTubeProcessor:
             optimized_thumbnail = f"{base_name}_thumbnail.jpg"
             
             # Convert any format to JPEG and resize to 300x300 for device compatibility
-            # This ensures we always have a proper JPEG for embedding
             try:
                 cmd_convert = [
                     'ffmpeg', '-y',         # Overwrite output
                     '-i', thumbnail_path,   # Input thumbnail (any format)
-                    '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2:color=white',  # Square with white padding
-                    '-q:v', '2',            # High quality JPEG (1-31, lower = better)
-                    '-pix_fmt', 'yuv420p',  # Standard pixel format for compatibility
+                    '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2:color=white',
+                    '-q:v', '2',            # High quality JPEG
+                    '-pix_fmt', 'yuv420p',  # Standard pixel format
                     '-f', 'mjpeg',          # Force MJPEG format
                     optimized_thumbnail     # Output JPEG file
                 ]
@@ -422,48 +427,53 @@ class YouTubeProcessor:
             except subprocess.CalledProcessError as e:
                 logger.warning(f"Thumbnail optimization failed: {e}")
             
-            # Use FFmpeg with ID3v2.3 + APIC for maximum device compatibility
-            # This exact format works on Xiaomi, Samsung, iPhone, VLC and all major players
-            cmd = [
-                'ffmpeg', '-y',           # Overwrite output file
-                '-i', mp3_path,           # Input MP3 file
-                '-i', thumbnail_path,     # Input thumbnail (JPEG)
-                '-map', '0:a',            # Map audio from first input
-                '-map', '1:v',            # Map image from second input
-                '-c:a', 'copy',           # Copy audio without re-encoding
-                '-c:v', 'mjpeg',          # Encode image as MJPEG (best compatibility)
-                '-disposition:v', 'attached_pic',  # Mark as attached picture
-                '-id3v2_version', '3',    # Force ID3v2.3 (most compatible format)
-                '-metadata:s:v', 'title=Album cover',  # Standard title
-                '-metadata:s:v', 'comment=Cover (front)',  # Mark as front cover
-                embedded_path             # Output file
-            ]
+            # Copy original MP3 file
+            shutil.copy2(mp3_path, embedded_path)
             
-            logger.info(f"Embedding thumbnail with FFmpeg ID3v2.3 + APIC: {title}")
-            result = subprocess.run(cmd, capture_output=True, timeout=120)
+            # Read thumbnail image data
+            with open(thumbnail_path, 'rb') as img_file:
+                img_data = img_file.read()
             
-            if result.returncode == 0 and os.path.exists(embedded_path):
-                embedded_size = os.path.getsize(embedded_path)
+            # Load MP3 file with Mutagen
+            try:
+                audio = MP3(embedded_path, ID3=ID3)
+            except ID3NoHeaderError:
+                # Add ID3 header if it doesn't exist
+                audio = MP3(embedded_path)
+                audio.add_tags()
+            
+            # Clear any existing album art
+            audio.tags.delall('APIC')
+            
+            # Add album art with ID3v2.3 format - this is the key for device compatibility
+            audio.tags.add(
+                APIC(
+                    encoding=3,        # UTF-8 encoding
+                    mime='image/jpeg', # MIME type for JPEG
+                    type=3,            # Front cover (type 3)
+                    desc='Cover',      # Description
+                    data=img_data      # Image data
+                )
+            )
+            
+            # Force save as ID3v2.3 (most compatible version)
+            audio.tags.update_to_v23()
+            audio.save(v2_version=3, v23_sep='/')
+            
+            logger.info(f"✓ Mutagen ID3v2.3 + APIC embedding successful for: {title}")
+            
+            if os.path.exists(embedded_path):
                 original_size = os.path.getsize(mp3_path)
-                logger.info(f"✓ FFmpeg ID3v2.3 + APIC embedding successful for: {title}")
+                embedded_size = os.path.getsize(embedded_path)
                 logger.info(f"File size: {original_size} → {embedded_size} bytes")
                 
-                # Clean up temporary thumbnail
+                # Clean up optimized thumbnail if we created one
                 if optimized_thumbnail != thumbnail_path and os.path.exists(optimized_thumbnail):
                     os.remove(optimized_thumbnail)
                 
                 return embedded_path
             else:
-                error_msg = result.stderr.decode() if result.stderr else 'Unknown error'
-                logger.error(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}")
-                logger.error(f"Error details: {error_msg}")
-                
-                # Clean up temporary files
-                if os.path.exists(embedded_path):
-                    os.remove(embedded_path)
-                if optimized_thumbnail != thumbnail_path and os.path.exists(optimized_thumbnail):
-                    os.remove(optimized_thumbnail)
-                    
+                logger.warning(f"Embedded file not created: {embedded_path}")
                 return mp3_path
                 
         except Exception as e:

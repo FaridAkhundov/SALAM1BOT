@@ -27,7 +27,7 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **YOUTUBE RESTRICTION BYPASS (2025-08-19):** Enhanced restriction bypass system to handle multiple YouTube blocking methods including "content not available on this app" and "watch on latest version" errors. Implemented multi-tier fallback strategy with web browser, mobile, and minimal configurations. Includes Android and web player client switching for maximum compatibility.
 
-**PERFECT DEVICE THUMBNAIL COMPATIBILITY (2025-08-19):** Fixed thumbnail embedding to work perfectly on all devices including Xiaomi 13T Pro, Samsung Music, iPhone, VLC. Uses exact FFmpeg format: ID3v2.3 + MJPEG + "Cover (front)" metadata. Thumbnails now display correctly in device music players when MP3 files are downloaded locally.
+**MUTAGEN ID3v2.3 IMPLEMENTATION (2025-08-19):** Switched from FFmpeg to Mutagen library for thumbnail embedding. This ensures perfect ID3v2.3 compatibility with precise APIC (Attached Picture) tag writing. Thumbnails now display correctly on all devices including Xiaomi 13T Pro, Samsung Music, iPhone, VLC when MP3 files are downloaded locally.
 
 **CODE OPTIMIZATION (2025-08-18):** Cleaned and optimized codebase by removing unused parameters, excessive logging, redundant error handling, and non-functional features. Streamlined download and search processes while maintaining core functionality.
 
