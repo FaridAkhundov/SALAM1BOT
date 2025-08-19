@@ -239,7 +239,9 @@ class YouTubeProcessor:
                     "error": ERROR_MESSAGES["file_too_large"]
                 }
             
-            thumbnail_path = self._find_thumbnail_file(title)
+            # Extract video_id for proper thumbnail matching
+            video_id = url.split('/')[-1].split('?')[0] if 'youtu' in url else url.split('=')[-1].split('&')[0]
+            thumbnail_path = self._find_thumbnail_file(title, video_id)
             
             # Always try manual thumbnail embedding for better compatibility  
             if thumbnail_path and os.path.exists(thumbnail_path):
@@ -433,21 +435,22 @@ class YouTubeProcessor:
         
         return ""
     
-    def _find_thumbnail_file(self, title: str) -> str:
+    def _find_thumbnail_file(self, title: str, video_id: str = None) -> str:
         temp_path = Path(TEMP_DIR)
         if not temp_path.exists():
             return None
         
-        for ext in ['.webp', '.jpg', '.jpeg', '.png']:
-            for file_path in temp_path.glob(f"*{ext}"):
-                if any(word.lower() in file_path.stem.lower() for word in title.split() if len(word) > 3):
+        # First priority: Look for thumbnails with exact video_id match
+        if video_id:
+            for ext in ['.webp', '.jpg', '.jpeg', '.png']:
+                for file_path in temp_path.glob(f"*{video_id}*{ext}"):
                     return str(file_path)
         
-        thumbnail_files = []
+        # Second priority: Look for thumbnails matching title words
+        title_words = [word.lower() for word in title.split() if len(word) > 3]
         for ext in ['.webp', '.jpg', '.jpeg', '.png']:
-            thumbnail_files.extend(temp_path.glob(f"*{ext}"))
+            for file_path in temp_path.glob(f"*{ext}"):
+                if any(word in file_path.stem.lower() for word in title_words):
+                    return str(file_path)
         
-        if thumbnail_files:
-            return str(max(thumbnail_files, key=lambda f: f.stat().st_mtime))
-        
-        return None
+        return None  # Don't use random thumbnails
