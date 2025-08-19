@@ -89,6 +89,10 @@ class YouTubeProcessor:
                     {
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
+                    },
+                    {
+                        'key': 'EmbedThumbnail',
+                        'already_have_thumbnail': False,
                     }
                 ],
                 'progress_hooks': [progress_hook],
@@ -223,28 +227,42 @@ class YouTubeProcessor:
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
+            # Convert WebP to JPEG for better MP3 compatibility
             if thumbnail_path.lower().endswith('.webp'):
                 jpeg_path = thumbnail_path.replace('.webp', '.jpg')
-                subprocess.run(['ffmpeg', '-i', thumbnail_path, '-y', jpeg_path], 
-                             capture_output=True, timeout=10)
-                if os.path.exists(jpeg_path):
-                    thumbnail_path = jpeg_path
+                try:
+                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-q:v', '2', '-y', jpeg_path], 
+                                 capture_output=True, timeout=15, check=True)
+                    if os.path.exists(jpeg_path):
+                        thumbnail_path = jpeg_path
+                except subprocess.CalledProcessError:
+                    logger.warning("Failed to convert WebP to JPEG, using original")
             
+            # Enhanced FFmpeg command for better thumbnail embedding in music players
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
-                '-map', '0:0', '-map', '1:0', '-c:a', 'copy', '-c:v', 'mjpeg',
-                '-id3v2_version', '3', '-disposition:v', 'attached_pic',
+                '-map', '0:a', '-map', '1:v',  # Map audio and video streams
+                '-c:a', 'copy',  # Copy audio without re-encoding
+                '-c:v', 'mjpeg',  # Use MJPEG for thumbnail
+                '-vf', 'scale=600:600:force_original_aspect_ratio=decrease,pad=600:600:(ow-iw)/2:(oh-ih)/2',  # Resize to 600x600 with padding
+                '-disposition:v', 'attached_pic',  # Mark video stream as attached picture
+                '-id3v2_version', '3',  # Use ID3v2.3 for maximum compatibility
+                '-metadata:s:v', 'title=Album cover',  # Add metadata for thumbnail
+                '-metadata:s:v', 'comment=Cover (front)',  # Mark as front cover
                 '-y', embedded_path
             ]
             
-            result = subprocess.run(cmd, capture_output=True, timeout=30)
+            result = subprocess.run(cmd, capture_output=True, timeout=45)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
+                logger.info(f"Successfully embedded thumbnail for: {title}")
                 return embedded_path
             else:
+                logger.warning(f"Thumbnail embedding failed for: {title}, stderr: {result.stderr.decode() if result.stderr else 'No error output'}")
                 return mp3_path
                 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Exception during thumbnail embedding: {e}")
             return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
