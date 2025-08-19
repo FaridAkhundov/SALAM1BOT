@@ -95,7 +95,7 @@ class YouTubeProcessor:
 
             # Enhanced yt-dlp options with improved connection handling
             ydl_opts = {
-                'format': 'bestaudio/best[filesize<45M]',
+                'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm][filesize<45M]/bestaudio',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
                 'writethumbnail': True,
                 'writeinfojson': False,
@@ -103,7 +103,7 @@ class YouTubeProcessor:
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
-                        'preferredquality': '192',
+                        'preferredquality': '96',   # Even lower for max speed
                     },
                     {
                         'key': 'FFmpegMetadata',
@@ -114,14 +114,14 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                # Connection and timeout improvements
-                'socket_timeout': 30,  # Reduced from 120 to 30 seconds
-                'http_timeout': 30,    # Added HTTP timeout
-                'extractor_retries': 3,  # Reduced retries to avoid hanging
-                'fragment_retries': 3,   # Reduced fragment retries
-                'retries': 2,           # Reduced main retries
-                'file_access_retries': 3,
-                'concurrent_fragment_downloads': 1,  # Reduced concurrency for stability
+                # Optimized for speed
+                'socket_timeout': 20,
+                'http_timeout': 20,    
+                'extractor_retries': 2,  # Faster failure
+                'fragment_retries': 2,   
+                'retries': 1,           # Minimal retries
+                'file_access_retries': 2,
+                'concurrent_fragment_downloads': 8,  # More parallel downloads
                 'keepvideo': False,
                 # User-Agent to avoid detection
                 'http_headers': {
@@ -138,8 +138,8 @@ class YouTubeProcessor:
             uploader = 'Unknown Artist'
             duration = 0
             
-            # Implement retry mechanism with exponential backoff
-            max_attempts = 3
+            # Fast retry mechanism with minimal attempts
+            max_attempts = 2  # Reduce retry attempts for speed
             for attempt in range(max_attempts):
                 try:
                     logger.info(f"Download attempt {attempt + 1} for URL: {url}")
@@ -367,32 +367,21 @@ class YouTubeProcessor:
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
-            # Convert WebP to JPEG for better MP3 compatibility and resize for smaller file
+            # Quick thumbnail conversion for speed
             if thumbnail_path.lower().endswith('.webp') or thumbnail_path.lower().endswith('.png'):
                 jpeg_path = thumbnail_path.replace('.webp', '.jpg').replace('.png', '.jpg')
                 try:
-                    # Convert and resize to 300x300 for better compatibility and smaller size
-                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2', '-q:v', '3', '-y', jpeg_path], 
-                                 capture_output=True, timeout=60, check=True)
+                    # Simple fast conversion without resize
+                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-q:v', '5', '-y', jpeg_path], 
+                                 capture_output=True, timeout=10, check=True)
                     if os.path.exists(jpeg_path):
                         thumbnail_path = jpeg_path
                         logger.info(f"Converted thumbnail to JPEG: {jpeg_path}")
-                except subprocess.CalledProcessError as e:
-                    logger.warning(f"Failed to convert thumbnail to JPEG: {e}")
-            elif thumbnail_path.lower().endswith('.jpg') or thumbnail_path.lower().endswith('.jpeg'):
-                # Resize existing JPEG for consistency
-                resized_path = thumbnail_path.replace('.jpg', '_resized.jpg').replace('.jpeg', '_resized.jpg')
-                try:
-                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2', '-q:v', '3', '-y', resized_path], 
-                                 capture_output=True, timeout=60, check=True)
-                    if os.path.exists(resized_path):
-                        thumbnail_path = resized_path
-                        logger.info(f"Resized thumbnail: {resized_path}")
-                except subprocess.CalledProcessError as e:
-                    logger.warning(f"Failed to resize thumbnail: {e}")
+                except subprocess.CalledProcessError:
+                    # Use original if conversion fails
+                    pass
             
             # Use FFmpeg method directly (more reliable than eyeD3)
-
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
                 '-map', '0:a', '-map', '1:v',
@@ -407,7 +396,7 @@ class YouTubeProcessor:
             ]
             
             logger.info(f"Using FFmpeg for thumbnail embedding: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, timeout=120)
+            result = subprocess.run(cmd, capture_output=True, timeout=30)  # Faster timeout
             
             if result.returncode == 0 and os.path.exists(embedded_path):
                 logger.info(f"FFmpeg embedding successful. Output size: {os.path.getsize(embedded_path)} bytes")

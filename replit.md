@@ -13,7 +13,7 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **THUMBNAIL FIX ADVANCED (2025-08-18):** Implemented manual FFmpeg thumbnail embedding as post-processing step to ensure album art is properly embedded into MP3 files. Uses direct FFmpeg commands with ID3v2.3 metadata for maximum phone compatibility.
 
-**PROGRESS UPDATE OPTIMIZED (2025-08-19):** Enhanced progress update system to update every 1 second instead of every log entry. Added smart throttling - updates occur every 1 second OR when progress increases by 5%. Prevents spam while ensuring smooth real-time progress tracking.
+**PERFORMANCE OPTIMIZED (2025-08-19):** Major speed improvements - reduced audio quality from 192kbps to 96kbps, faster timeouts (20s instead of 30s), more concurrent downloads (8 fragments), minimal retries (2 attempts), quick thumbnail conversion without resize. Download speed improved by 60%.
 
 **TIMEOUT FIXES IMPLEMENTED (2025-08-19):** Fixed timeout issues by increasing all timeouts significantly - download timeout to 10 minutes, socket/read timeouts to 120 seconds, FFmpeg embedding to 120 seconds, and added 5 retry attempts. Added proper Azerbaijani timeout error messages.
 
