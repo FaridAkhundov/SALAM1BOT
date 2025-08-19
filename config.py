@@ -9,7 +9,7 @@ if not BOT_TOKEN:
 
 MAX_FILE_SIZE_MB = 49  # Maximum possible for Telegram (49.5MB limit)
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-DOWNLOAD_TIMEOUT = 300  # Increased to 5 minutes for large files
+DOWNLOAD_TIMEOUT = 600  # Increased to 10 minutes for large files
 TEMP_DIR = "temp_downloads"
 RATE_LIMIT_SECONDS = 0  # Completely disabled - unlimited requests
 AUDIO_QUALITY = "192"

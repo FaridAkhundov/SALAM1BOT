@@ -99,10 +99,11 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                'socket_timeout': 60,
-                'read_timeout': 60,
-                'extractor_retries': 3,
-                'fragment_retries': 3,
+                'socket_timeout': 120,
+                'read_timeout': 120,
+                'extractor_retries': 5,
+                'fragment_retries': 5,
+                'retries': 3,
                 'concurrent_fragment_downloads': 4,
                 'keepvideo': False,
             }
@@ -146,15 +147,17 @@ class YouTubeProcessor:
             
             thumbnail_path = self._find_thumbnail_file(title)
             
+            # Try manual thumbnail embedding if automatic failed
             if thumbnail_path and os.path.exists(thumbnail_path):
                 try:
-                    embedded_file_path = self._embed_thumbnail_manually(file_path, thumbnail_path, title)
-                    if embedded_file_path and embedded_file_path != file_path:
+                    embedded_file_path = self._embed_thumbnail_with_ffmpeg(file_path, thumbnail_path, title)
+                    if embedded_file_path and os.path.exists(embedded_file_path) and embedded_file_path != file_path:
                         os.remove(file_path)
                         file_path = embedded_file_path
                         file_size = os.path.getsize(file_path)
+                        logger.info(f"Successfully embedded thumbnail for: {title}")
                 except Exception as e:
-                    logger.warning(f"Thumbnail embedding failed: {e}")
+                    logger.warning(f"Manual thumbnail embedding failed: {e}")
             
             return {
                 "success": True,
@@ -192,8 +195,8 @@ class YouTubeProcessor:
                 'no_warnings': True,
                 'extract_flat': True,
                 'default_search': 'ytsearch',
-                'socket_timeout': 15,
-                'read_timeout': 15,
+                'socket_timeout': 60,
+                'read_timeout': 60,
             }
             
             with yt_dlp.YoutubeDL(search_opts) as ydl:
@@ -220,7 +223,7 @@ class YouTubeProcessor:
             logger.error(f"Search error: {str(e)}")
             return []
     
-    def _embed_thumbnail_manually(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
+    def _embed_thumbnail_with_ffmpeg(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
         try:
             import subprocess
             
@@ -232,33 +235,29 @@ class YouTubeProcessor:
                 jpeg_path = thumbnail_path.replace('.webp', '.jpg')
                 try:
                     subprocess.run(['ffmpeg', '-i', thumbnail_path, '-q:v', '2', '-y', jpeg_path], 
-                                 capture_output=True, timeout=15, check=True)
+                                 capture_output=True, timeout=60, check=True)
                     if os.path.exists(jpeg_path):
                         thumbnail_path = jpeg_path
                 except subprocess.CalledProcessError:
                     logger.warning("Failed to convert WebP to JPEG, using original")
             
-            # Enhanced FFmpeg command for better thumbnail embedding in music players
+            # FFmpeg command to embed thumbnail into MP3
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
-                '-map', '0:a', '-map', '1:v',  # Map audio and video streams
+                '-map', '0:a', '-map', '1:v',
                 '-c:a', 'copy',  # Copy audio without re-encoding
                 '-c:v', 'mjpeg',  # Use MJPEG for thumbnail
-                '-vf', 'scale=600:600:force_original_aspect_ratio=decrease,pad=600:600:(ow-iw)/2:(oh-ih)/2',  # Resize to 600x600 with padding
-                '-disposition:v', 'attached_pic',  # Mark video stream as attached picture
-                '-id3v2_version', '3',  # Use ID3v2.3 for maximum compatibility
-                '-metadata:s:v', 'title=Album cover',  # Add metadata for thumbnail
-                '-metadata:s:v', 'comment=Cover (front)',  # Mark as front cover
+                '-disposition:v', 'attached_pic',  # Mark as attached picture
+                '-id3v2_version', '3',  # Use ID3v2.3 for compatibility
                 '-y', embedded_path
             ]
             
-            result = subprocess.run(cmd, capture_output=True, timeout=45)
+            result = subprocess.run(cmd, capture_output=True, timeout=120)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
-                logger.info(f"Successfully embedded thumbnail for: {title}")
                 return embedded_path
             else:
-                logger.warning(f"Thumbnail embedding failed for: {title}, stderr: {result.stderr.decode() if result.stderr else 'No error output'}")
+                logger.warning(f"FFmpeg thumbnail embedding failed: {result.stderr.decode() if result.stderr else 'Unknown error'}")
                 return mp3_path
                 
         except Exception as e:

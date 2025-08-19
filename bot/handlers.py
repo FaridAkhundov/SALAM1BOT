@@ -118,9 +118,17 @@ async def process_youtube_url(update: Update, context: ContextTypes.DEFAULT_TYPE
         await asyncio.sleep(1)
         await processing_msg.delete()
         
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout error processing URL {url}")
+        await processing_msg.edit_text("⏱️ Proses çox uzun çəkdi. Zəhmət olmasa yenidən cəhd edin.")
     except Exception as e:
-        logger.error(f"Error processing URL {url}: {str(e)}")
-        await processing_msg.edit_text(ERROR_MESSAGES["general_error"])
+        error_message = str(e)
+        if "timed out" in error_message.lower() or "timeout" in error_message.lower():
+            logger.error(f"Timeout error processing URL {url}: {error_message}")
+            await processing_msg.edit_text("⏱️ Proses çox uzun çəkdi. Zəhmət olmasa yenidən cəhd edin.")
+        else:
+            logger.error(f"Error processing URL {url}: {error_message}")
+            await processing_msg.edit_text(ERROR_MESSAGES["general_error"])
 
 async def process_song_search(update: Update, context: ContextTypes.DEFAULT_TYPE, query: str) -> None:
     user_id = update.effective_user.id
