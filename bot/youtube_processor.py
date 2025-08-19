@@ -255,92 +255,82 @@ class YouTubeProcessor:
         try:
             import subprocess
             import shutil
-            import eyed3
             
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
-            # Convert WebP to JPEG for better MP3 compatibility and resize for smaller file
-            if thumbnail_path.lower().endswith('.webp') or thumbnail_path.lower().endswith('.png'):
-                jpeg_path = thumbnail_path.replace('.webp', '.jpg').replace('.png', '.jpg')
-                try:
-                    # Convert and resize to 300x300 for better compatibility and smaller size
-                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2', '-q:v', '3', '-y', jpeg_path], 
-                                 capture_output=True, timeout=60, check=True)
-                    if os.path.exists(jpeg_path):
-                        thumbnail_path = jpeg_path
-                        logger.info(f"Converted thumbnail to JPEG: {jpeg_path}")
-                except subprocess.CalledProcessError as e:
-                    logger.warning(f"Failed to convert thumbnail to JPEG: {e}")
-            elif thumbnail_path.lower().endswith('.jpg') or thumbnail_path.lower().endswith('.jpeg'):
-                # Resize existing JPEG for consistency
-                resized_path = thumbnail_path.replace('.jpg', '_resized.jpg').replace('.jpeg', '_resized.jpg')
-                try:
-                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2', '-q:v', '3', '-y', resized_path], 
-                                 capture_output=True, timeout=60, check=True)
-                    if os.path.exists(resized_path):
-                        thumbnail_path = resized_path
-                        logger.info(f"Resized thumbnail: {resized_path}")
-                except subprocess.CalledProcessError as e:
-                    logger.warning(f"Failed to resize thumbnail: {e}")
+            # Convert and optimize thumbnail for best device compatibility
+            optimized_thumbnail = f"{base_name}_thumbnail.jpg"
             
-            # Try eyeD3 method first (most compatible with devices)
+            # Convert any format to JPEG and resize to 300x300 for optimal compatibility
             try:
-                # Copy original file
-                shutil.copy2(mp3_path, embedded_path)
+                cmd_convert = [
+                    'ffmpeg', '-i', thumbnail_path,
+                    '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2',
+                    '-q:v', '2',  # High quality JPEG
+                    '-pix_fmt', 'yuv420p',  # Standard pixel format
+                    '-y', optimized_thumbnail
+                ]
                 
-                # Load MP3 with eyeD3
-                audiofile = eyed3.load(embedded_path)
-                if audiofile and audiofile.tag:
-                    # Read thumbnail image
-                    with open(thumbnail_path, 'rb') as img_file:
-                        image_data = img_file.read()
-                    
-                    # Clear existing images
-                    audiofile.tag.images.remove()
-                    
-                    # Add thumbnail as front cover
-                    audiofile.tag.images.set(3, image_data, "image/jpeg", "Front cover")
-                    
-                    # Save with ID3v2.3 for maximum compatibility
-                    audiofile.tag.save(version=eyed3.id3.ID3_V2_3)
-                    
-                    logger.info(f"eyeD3 thumbnail embedding successful for: {title}")
-                    return embedded_path
+                result = subprocess.run(cmd_convert, capture_output=True, timeout=60, check=True)
+                if os.path.exists(optimized_thumbnail):
+                    thumbnail_path = optimized_thumbnail
+                    logger.info(f"Optimized thumbnail created: {optimized_thumbnail}")
                 else:
-                    logger.warning("eyeD3 could not load MP3 file")
+                    logger.warning("Thumbnail optimization failed, using original")
                     
-            except Exception as e:
-                logger.warning(f"eyeD3 embedding failed: {e}")
-                # Fall back to FFmpeg method
-                
-            # Fallback to FFmpeg method if eyeD3 fails
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"Thumbnail optimization failed: {e}")
+            
+            # Use FFmpeg with ID3v2.3 + APIC for maximum device compatibility
             cmd = [
-                'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
-                '-map', '0:a', '-map', '1:v',
-                '-c:a', 'copy',  # Copy audio without re-encoding
-                '-c:v', 'copy',   # Copy image without re-encoding
-                '-disposition:v', 'attached_pic',  # Mark as attached picture
+                'ffmpeg', 
+                '-i', mp3_path,           # Input MP3 file
+                '-i', thumbnail_path,     # Input thumbnail
+                '-map', '0:a',            # Map audio from first input
+                '-map', '1:v',            # Map video/image from second input
+                '-c:a', 'copy',           # Copy audio stream without re-encoding
+                '-c:v', 'mjpeg',          # Use MJPEG codec for thumbnail (best compatibility)
+                '-disposition:v', 'attached_pic',  # Mark video as attached picture
+                '-id3v2_version', '3',    # Force ID3v2.3 (most compatible)
+                '-write_id3v1', '1',      # Also write ID3v1 for older devices
                 '-metadata:s:v', 'title=Album cover',
-                '-metadata:s:v', 'comment=Cover (Front)',
-                '-id3v2_version', '3',  # Use ID3v2.3
-                '-write_id3v1', '1',    # Write ID3v1 for compatibility
-                '-y', embedded_path
+                '-metadata:s:v', 'comment=Cover (front)',
+                '-movflags', '+faststart', # Optimize for streaming/mobile
+                '-y', embedded_path       # Output file, overwrite if exists
             ]
             
-            logger.info(f"Falling back to FFmpeg: {' '.join(cmd)}")
+            logger.info(f"Embedding thumbnail with FFmpeg ID3v2.3 + APIC: {title}")
             result = subprocess.run(cmd, capture_output=True, timeout=120)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
-                logger.info(f"FFmpeg embedding successful. Output size: {os.path.getsize(embedded_path)} bytes")
+                embedded_size = os.path.getsize(embedded_path)
+                original_size = os.path.getsize(mp3_path)
+                logger.info(f"✓ FFmpeg ID3v2.3 + APIC embedding successful for: {title}")
+                logger.info(f"File size: {original_size} → {embedded_size} bytes")
+                
+                # Clean up temporary thumbnail
+                if optimized_thumbnail != thumbnail_path and os.path.exists(optimized_thumbnail):
+                    os.remove(optimized_thumbnail)
+                
                 return embedded_path
             else:
                 error_msg = result.stderr.decode() if result.stderr else 'Unknown error'
-                logger.error(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}, Error: {error_msg}")
+                logger.error(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}")
+                logger.error(f"Error details: {error_msg}")
+                
+                # Clean up temporary files
+                if os.path.exists(embedded_path):
+                    os.remove(embedded_path)
+                if optimized_thumbnail != thumbnail_path and os.path.exists(optimized_thumbnail):
+                    os.remove(optimized_thumbnail)
+                    
                 return mp3_path
                 
         except Exception as e:
-            logger.error(f"Exception during thumbnail embedding: {e}")
+            logger.error(f"Exception during FFmpeg thumbnail embedding: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
