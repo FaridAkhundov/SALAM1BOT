@@ -133,6 +133,11 @@ class YouTubeProcessor:
                 'abort_on_error': True,  # Fail fast instead of hanging
             }
             
+            # Initialize variables with defaults to avoid "unbound" errors
+            title = 'Unknown Title'
+            uploader = 'Unknown Artist'
+            duration = 0
+            
             # Implement retry mechanism with exponential backoff
             max_attempts = 3
             for attempt in range(max_attempts):
@@ -152,7 +157,7 @@ class YouTubeProcessor:
                             continue
                         
                         title = info.get('title', 'Unknown Title')
-                        uploader = info.get('uploader', 'Unknown Artist')
+                        uploader = info.get('uploader', 'Unknown Artist') 
                         duration = info.get('duration', 0)
                         
                         estimated_size = duration * 24000
@@ -399,8 +404,13 @@ class YouTubeProcessor:
                     with open(thumbnail_path, 'rb') as img_file:
                         image_data = img_file.read()
                     
-                    # Clear existing images
-                    audiofile.tag.images.remove()
+                    # Clear existing images (fix the eyeD3 warning)
+                    try:
+                        for img in list(audiofile.tag.images):
+                            audiofile.tag.images.remove(img.description)
+                    except Exception:
+                        # If clearing fails, proceed anyway
+                        pass
                     
                     # Add thumbnail as front cover
                     audiofile.tag.images.set(3, image_data, "image/jpeg", "Front cover")
