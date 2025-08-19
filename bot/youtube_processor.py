@@ -258,27 +258,39 @@ class YouTubeProcessor:
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
-            # Convert WebP to JPEG for better MP3 compatibility
-            if thumbnail_path.lower().endswith('.webp'):
-                jpeg_path = thumbnail_path.replace('.webp', '.jpg')
+            # Convert WebP to JPEG for better MP3 compatibility and resize for smaller file
+            if thumbnail_path.lower().endswith('.webp') or thumbnail_path.lower().endswith('.png'):
+                jpeg_path = thumbnail_path.replace('.webp', '.jpg').replace('.png', '.jpg')
                 try:
-                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-q:v', '2', '-y', jpeg_path], 
+                    # Convert and resize to 300x300 for better compatibility and smaller size
+                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2', '-q:v', '3', '-y', jpeg_path], 
                                  capture_output=True, timeout=60, check=True)
                     if os.path.exists(jpeg_path):
                         thumbnail_path = jpeg_path
-                except subprocess.CalledProcessError:
-                    logger.warning("Failed to convert WebP to JPEG, using original")
+                        logger.info(f"Converted thumbnail to JPEG: {jpeg_path}")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Failed to convert thumbnail to JPEG: {e}")
+            elif thumbnail_path.lower().endswith('.jpg') or thumbnail_path.lower().endswith('.jpeg'):
+                # Resize existing JPEG for consistency
+                resized_path = thumbnail_path.replace('.jpg', '_resized.jpg').replace('.jpeg', '_resized.jpg')
+                try:
+                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2', '-q:v', '3', '-y', resized_path], 
+                                 capture_output=True, timeout=60, check=True)
+                    if os.path.exists(resized_path):
+                        thumbnail_path = resized_path
+                        logger.info(f"Resized thumbnail: {resized_path}")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Failed to resize thumbnail: {e}")
             
-            # FFmpeg command to embed thumbnail into MP3 with better compatibility
+            # FFmpeg command to embed thumbnail into MP3 with maximum device compatibility
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
                 '-map', '0:a', '-map', '1:v',
                 '-c:a', 'copy',  # Copy audio without re-encoding
-                '-c:v', 'png',   # Use PNG for better compatibility
+                '-c:v', 'mjpeg',   # Use MJPEG for better device compatibility
                 '-disposition:v', 'attached_pic',  # Mark as attached picture
-                '-metadata:s:v', 'title=Album cover',  # Add metadata for thumbnail
-                '-metadata:s:v', 'comment=Cover (front)',
-                '-id3v2_version', '3',  # Use ID3v2.3 for compatibility
+                '-id3v2_version', '3',  # Use ID3v2.3 for maximum compatibility
+                '-write_id3v1', '1',    # Also write ID3v1 for older devices
                 '-y', embedded_path
             ]
             
