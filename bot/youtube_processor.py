@@ -240,7 +240,10 @@ class YouTubeProcessor:
                 }
             
             # Extract video_id for proper thumbnail matching
-            video_id = url.split('/')[-1].split('?')[0] if 'youtu' in url else url.split('=')[-1].split('&')[0]
+            import re
+            video_id_match = re.search(r'(?:v=|/)([a-zA-Z0-9_-]{11})', url)
+            video_id = video_id_match.group(1) if video_id_match else None
+            logger.info(f"Extracted video_id: {video_id} from URL: {url}")
             thumbnail_path = self._find_thumbnail_file(title, video_id)
             
             # Always try manual thumbnail embedding for better compatibility  
@@ -444,7 +447,9 @@ class YouTubeProcessor:
         if video_id:
             for ext in ['.webp', '.jpg', '.jpeg', '.png']:
                 for file_path in temp_path.glob(f"*{video_id}*{ext}"):
+                    logger.info(f"Found exact video_id match: {file_path}")
                     return str(file_path)
+            logger.info(f"No exact video_id match found for: {video_id}")
         
         # Second priority: Look for thumbnails matching title words
         title_words = [word.lower() for word in title.split() if len(word) > 3]
