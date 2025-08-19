@@ -55,22 +55,41 @@ class YouTubeProcessor:
                             downloaded = d.get('downloaded_bytes', 0)
                             progress = min(99, int((downloaded / total) * 100))
                             
-                            # Log progress for debugging
-                            logger.info(f"Download progress: {progress}%")
+                            # Update progress callback every 1 second instead of every log
+                            if not hasattr(self, '_last_progress_update') or not hasattr(self, '_last_progress_value'):
+                                self._last_progress_update = 0
+                                self._last_progress_value = -1
                             
-                            if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
-                                try:
-                                    # Schedule callback on main loop
-                                    future = asyncio.run_coroutine_threadsafe(
-                                        self.progress_callback(f"📥 Yüklənir.. ({progress}%)"),
-                                        self.main_loop
-                                    )
-                                    # Don't wait for result to avoid blocking
-                                except Exception as e:
-                                    logger.error(f"Progress callback failed: {e}")
+                            import time
+                            current_time = time.time()
+                            
+                            # Update progress every 1 second or when progress changes significantly
+                            if (current_time - self._last_progress_update >= 1.0 or 
+                                progress - self._last_progress_value >= 5):
+                                
+                                self._last_progress_update = current_time
+                                self._last_progress_value = progress
+                                
+                                if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
+                                    try:
+                                        # Schedule callback on main loop
+                                        future = asyncio.run_coroutine_threadsafe(
+                                            self.progress_callback(f"📥 Yüklənir.. ({progress}%)"),
+                                            self.main_loop
+                                        )
+                                        # Don't wait for result to avoid blocking
+                                    except Exception as e:
+                                        logger.error(f"Progress callback failed: {e}")
                     elif d['status'] == 'finished':
-                        logger.info("Download finished - 100%")
-                        # No callback needed - download is complete
+                        # Final update when download completes
+                        if self.progress_callback and hasattr(self, 'main_loop') and self.main_loop:
+                            try:
+                                asyncio.run_coroutine_threadsafe(
+                                    self.progress_callback("📥 Yüklənir.. (99%)"),
+                                    self.main_loop
+                                )
+                            except Exception as e:
+                                logger.error(f"Final progress callback failed: {e}")
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
