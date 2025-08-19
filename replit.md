@@ -23,6 +23,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **FFmpeg ID3v2.3 + APIC IMPLEMENTATION (2025-08-19):** Implemented advanced FFmpeg-based thumbnail embedding using ID3v2.3 + APIC format for maximum device compatibility. System now optimizes thumbnails to 300x300 JPEG with yuv420p pixel format and embeds using MJPEG codec with attached_pic disposition. Includes ID3v1 compatibility and faststart optimization for mobile devices.
 
+**ANTI-BOT DETECTION ENHANCED (2025-08-19):** Implemented comprehensive anti-bot detection measures to bypass YouTube's bot blocking. Added fallback extraction strategies with browser-like headers, cookies support, and minimal configuration fallbacks. Includes automatic retry logic for bot detection scenarios.
+
 **CODE OPTIMIZATION (2025-08-18):** Cleaned and optimized codebase by removing unused parameters, excessive logging, redundant error handling, and non-functional features. Streamlined download and search processes while maintaining core functionality.
 
 **ENHANCED (2025-08-17):** Added unlimited multitasking - users can now send 50+ downloads simultaneously. Improved session management messages in Azerbaijani for expired search results.

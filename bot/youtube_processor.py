@@ -93,7 +93,7 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-            # Enhanced yt-dlp options with anti-detection measures
+            # Enhanced yt-dlp options with advanced anti-detection measures
             ydl_opts = {
                 'format': 'bestaudio/best[filesize<45M]',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -109,7 +109,6 @@ class YouTubeProcessor:
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
                     },
-
                 ],
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
@@ -122,10 +121,70 @@ class YouTubeProcessor:
                 'retries': 3,
                 'concurrent_fragment_downloads': 4,
                 'keepvideo': False,
+                # Advanced anti-bot detection measures
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                },
+                'extractor_args': {
+                    'youtube': {
+                        'skip': ['hls', 'dash'],  # Skip problematic formats
+                        'player_skip': ['configs'],  # Skip player configs that may trigger detection
+                    }
+                },
+                # Use browser-like behavior
+                'cookies_from_browser': ('chrome',),  # Try to use Chrome cookies if available
+                'age_limit': 0,  # Don't skip age-restricted content
+                'ignoreerrors': False,  # Don't ignore errors, handle them properly
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
+                try:
+                    info = ydl.extract_info(url, download=False)
+                except yt_dlp.utils.ExtractorError as e:
+                    error_msg = str(e)
+                    if "Sign in to confirm you're not a bot" in error_msg:
+                        # Try fallback options for bot detection
+                        logger.warning("Bot detection encountered, trying fallback options...")
+                        
+                        # Remove browser cookies and try with minimal headers
+                        fallback_opts = ydl_opts.copy()
+                        fallback_opts.pop('cookies_from_browser', None)
+                        fallback_opts['http_headers'] = {
+                            'User-Agent': 'yt-dlp/2025.08.11',
+                        }
+                        
+                        with yt_dlp.YoutubeDL(fallback_opts) as fallback_ydl:
+                            try:
+                                info = fallback_ydl.extract_info(url, download=False)
+                            except Exception:
+                                # If still fails, try with even more minimal config
+                                minimal_opts = {
+                                    'format': 'bestaudio/best[filesize<45M]',
+                                    'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
+                                    'writethumbnail': True,
+                                    'postprocessors': [
+                                        {
+                                            'key': 'FFmpegExtractAudio',
+                                            'preferredcodec': 'mp3',
+                                            'preferredquality': '192',
+                                        }
+                                    ],
+                                    'progress_hooks': [progress_hook],
+                                    'noplaylist': True,
+                                    'quiet': True,
+                                    'no_warnings': True,
+                                }
+                                
+                                with yt_dlp.YoutubeDL(minimal_opts) as minimal_ydl:
+                                    info = minimal_ydl.extract_info(url, download=False)
+                    else:
+                        raise e
                 
                 if not info:
                     return {
@@ -144,7 +203,13 @@ class YouTubeProcessor:
                         "error": ERROR_MESSAGES["file_too_large"]
                     }
                 
-                ydl.download([url])
+                # Use the same configuration for download that worked for extraction
+                if 'fallback_ydl' in locals():
+                    fallback_ydl.download([url])
+                elif 'minimal_ydl' in locals():
+                    minimal_ydl.download([url])
+                else:
+                    ydl.download([url])
             
             file_path = self._find_converted_file(title)
             if not file_path or not os.path.exists(file_path):
@@ -225,6 +290,17 @@ class YouTubeProcessor:
                 'default_search': 'ytsearch',
                 'socket_timeout': 60,
                 'read_timeout': 60,
+                # Anti-bot measures for search
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                },
+                'extractor_args': {
+                    'youtube': {
+                        'skip': ['hls', 'dash'],
+                        'player_skip': ['configs'],
+                    }
+                },
             }
             
             with yt_dlp.YoutubeDL(search_opts) as ydl:
