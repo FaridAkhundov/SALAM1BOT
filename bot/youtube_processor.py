@@ -109,10 +109,7 @@ class YouTubeProcessor:
                         'key': 'FFmpegMetadata',
                         'add_metadata': True,
                     },
-                    {
-                        'key': 'EmbedThumbnail',
-                        'already_have_thumbnail': False,
-                    }
+
                 ],
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
@@ -166,17 +163,29 @@ class YouTubeProcessor:
             
             thumbnail_path = self._find_thumbnail_file(title)
             
-            # Try manual thumbnail embedding if automatic failed
+            # Always try manual thumbnail embedding for better compatibility  
             if thumbnail_path and os.path.exists(thumbnail_path):
                 try:
+                    logger.info(f"Attempting thumbnail embedding for: {title}")
                     embedded_file_path = self._embed_thumbnail_with_ffmpeg(file_path, thumbnail_path, title)
                     if embedded_file_path and os.path.exists(embedded_file_path) and embedded_file_path != file_path:
-                        os.remove(file_path)
-                        file_path = embedded_file_path
-                        file_size = os.path.getsize(file_path)
-                        logger.info(f"Successfully embedded thumbnail for: {title}")
+                        # Check if embedded file is valid and has reasonable size
+                        embedded_size = os.path.getsize(embedded_file_path)
+                        if embedded_size > 1000:  # At least 1KB
+                            os.remove(file_path)
+                            file_path = embedded_file_path
+                            file_size = embedded_size
+                            logger.info(f"Successfully embedded thumbnail for: {title}")
+                        else:
+                            logger.warning("Embedded file too small, keeping original")
+                            if os.path.exists(embedded_file_path):
+                                os.remove(embedded_file_path)
+                    else:
+                        logger.warning("Thumbnail embedding failed or returned same file")
                 except Exception as e:
                     logger.warning(f"Manual thumbnail embedding failed: {e}")
+            else:
+                logger.warning(f"No thumbnail found for: {title}")
             
             return {
                 "success": True,
@@ -260,23 +269,28 @@ class YouTubeProcessor:
                 except subprocess.CalledProcessError:
                     logger.warning("Failed to convert WebP to JPEG, using original")
             
-            # FFmpeg command to embed thumbnail into MP3
+            # FFmpeg command to embed thumbnail into MP3 with better compatibility
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
                 '-map', '0:a', '-map', '1:v',
                 '-c:a', 'copy',  # Copy audio without re-encoding
-                '-c:v', 'mjpeg',  # Use MJPEG for thumbnail
+                '-c:v', 'png',   # Use PNG for better compatibility
                 '-disposition:v', 'attached_pic',  # Mark as attached picture
+                '-metadata:s:v', 'title=Album cover',  # Add metadata for thumbnail
+                '-metadata:s:v', 'comment=Cover (front)',
                 '-id3v2_version', '3',  # Use ID3v2.3 for compatibility
                 '-y', embedded_path
             ]
             
+            logger.info(f"Running FFmpeg command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, timeout=120)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
+                logger.info(f"FFmpeg embedding successful. Output size: {os.path.getsize(embedded_path)} bytes")
                 return embedded_path
             else:
-                logger.warning(f"FFmpeg thumbnail embedding failed: {result.stderr.decode() if result.stderr else 'Unknown error'}")
+                error_msg = result.stderr.decode() if result.stderr else 'Unknown error'
+                logger.error(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}, Error: {error_msg}")
                 return mp3_path
                 
         except Exception as e:
