@@ -254,6 +254,8 @@ class YouTubeProcessor:
     def _embed_thumbnail_with_ffmpeg(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
         try:
             import subprocess
+            import shutil
+            import eyed3
             
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
@@ -282,19 +284,51 @@ class YouTubeProcessor:
                 except subprocess.CalledProcessError as e:
                     logger.warning(f"Failed to resize thumbnail: {e}")
             
-            # FFmpeg command to embed thumbnail into MP3 with maximum device compatibility
+            # Try eyeD3 method first (most compatible with devices)
+            try:
+                # Copy original file
+                shutil.copy2(mp3_path, embedded_path)
+                
+                # Load MP3 with eyeD3
+                audiofile = eyed3.load(embedded_path)
+                if audiofile and audiofile.tag:
+                    # Read thumbnail image
+                    with open(thumbnail_path, 'rb') as img_file:
+                        image_data = img_file.read()
+                    
+                    # Clear existing images
+                    audiofile.tag.images.remove()
+                    
+                    # Add thumbnail as front cover
+                    audiofile.tag.images.set(3, image_data, "image/jpeg", "Front cover")
+                    
+                    # Save with ID3v2.3 for maximum compatibility
+                    audiofile.tag.save(version=eyed3.id3.ID3_V2_3)
+                    
+                    logger.info(f"eyeD3 thumbnail embedding successful for: {title}")
+                    return embedded_path
+                else:
+                    logger.warning("eyeD3 could not load MP3 file")
+                    
+            except Exception as e:
+                logger.warning(f"eyeD3 embedding failed: {e}")
+                # Fall back to FFmpeg method
+                
+            # Fallback to FFmpeg method if eyeD3 fails
             cmd = [
                 'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
                 '-map', '0:a', '-map', '1:v',
                 '-c:a', 'copy',  # Copy audio without re-encoding
-                '-c:v', 'mjpeg',   # Use MJPEG for better device compatibility
+                '-c:v', 'copy',   # Copy image without re-encoding
                 '-disposition:v', 'attached_pic',  # Mark as attached picture
-                '-id3v2_version', '3',  # Use ID3v2.3 for maximum compatibility
-                '-write_id3v1', '1',    # Also write ID3v1 for older devices
+                '-metadata:s:v', 'title=Album cover',
+                '-metadata:s:v', 'comment=Cover (Front)',
+                '-id3v2_version', '3',  # Use ID3v2.3
+                '-write_id3v1', '1',    # Write ID3v1 for compatibility
                 '-y', embedded_path
             ]
             
-            logger.info(f"Running FFmpeg command: {' '.join(cmd)}")
+            logger.info(f"Falling back to FFmpeg: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, timeout=120)
             
             if result.returncode == 0 and os.path.exists(embedded_path):
