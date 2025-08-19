@@ -148,41 +148,85 @@ class YouTubeProcessor:
                     info = ydl.extract_info(url, download=False)
                 except yt_dlp.utils.ExtractorError as e:
                     error_msg = str(e)
-                    if "Sign in to confirm you're not a bot" in error_msg:
-                        # Try fallback options for bot detection
-                        logger.warning("Bot detection encountered, trying fallback options...")
+                    if any(phrase in error_msg for phrase in [
+                        "Sign in to confirm you're not a bot",
+                        "The following content is not available on this app",
+                        "Watch on the latest version of YouTube"
+                    ]):
+                        # Try fallback options for YouTube restrictions
+                        logger.warning(f"YouTube restriction encountered: {error_msg[:100]}...")
+                        logger.warning("Trying fallback extraction methods...")
                         
-                        # Remove browser cookies and try with minimal headers
-                        fallback_opts = ydl_opts.copy()
-                        fallback_opts.pop('cookies_from_browser', None)
-                        fallback_opts['http_headers'] = {
-                            'User-Agent': 'yt-dlp/2025.08.11',
-                        }
+                        # Try different user agents and configurations
+                        fallback_configs = [
+                            # Standard web browser
+                            {
+                                **ydl_opts,
+                                'http_headers': {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                    'Accept': '*/*',
+                                    'Accept-Language': 'en-US,en;q=0.9',
+                                    'Sec-Fetch-Mode': 'navigate',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android', 'web'],
+                                        'skip': ['hls'],
+                                    }
+                                },
+                            },
+                            # Mobile user agent
+                            {
+                                **ydl_opts,
+                                'http_headers': {
+                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
+                            },
+                            # Minimal configuration
+                            {
+                                'format': 'bestaudio/best[filesize<45M]',
+                                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
+                                'writethumbnail': True,
+                                'postprocessors': [
+                                    {
+                                        'key': 'FFmpegExtractAudio',
+                                        'preferredcodec': 'mp3',
+                                        'preferredquality': '192',
+                                    }
+                                ],
+                                'progress_hooks': [progress_hook],
+                                'noplaylist': True,
+                                'quiet': True,
+                                'no_warnings': True,
+                                'http_headers': {
+                                    'User-Agent': 'yt-dlp/2025.08.11',
+                                },
+                            }
+                        ]
                         
-                        with yt_dlp.YoutubeDL(fallback_opts) as fallback_ydl:
+                        info = None
+                        successful_config = None
+                        
+                        for i, config in enumerate(fallback_configs):
                             try:
-                                info = fallback_ydl.extract_info(url, download=False)
-                            except Exception:
-                                # If still fails, try with even more minimal config
-                                minimal_opts = {
-                                    'format': 'bestaudio/best[filesize<45M]',
-                                    'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
-                                    'writethumbnail': True,
-                                    'postprocessors': [
-                                        {
-                                            'key': 'FFmpegExtractAudio',
-                                            'preferredcodec': 'mp3',
-                                            'preferredquality': '192',
-                                        }
-                                    ],
-                                    'progress_hooks': [progress_hook],
-                                    'noplaylist': True,
-                                    'quiet': True,
-                                    'no_warnings': True,
-                                }
-                                
-                                with yt_dlp.YoutubeDL(minimal_opts) as minimal_ydl:
-                                    info = minimal_ydl.extract_info(url, download=False)
+                                logger.info(f"Trying fallback configuration {i+1}/3...")
+                                with yt_dlp.YoutubeDL(config) as fallback_ydl:
+                                    info = fallback_ydl.extract_info(url, download=False)
+                                    successful_config = config
+                                    logger.info(f"Fallback configuration {i+1} successful!")
+                                    break
+                            except Exception as fallback_error:
+                                logger.warning(f"Fallback {i+1} failed: {str(fallback_error)[:100]}")
+                                continue
+                        
+                        if not info:
+                            raise e  # Re-raise original error if all fallbacks fail
+                            
                     else:
                         raise e
                 
@@ -204,10 +248,10 @@ class YouTubeProcessor:
                     }
                 
                 # Use the same configuration for download that worked for extraction
-                if 'fallback_ydl' in locals():
-                    fallback_ydl.download([url])
-                elif 'minimal_ydl' in locals():
-                    minimal_ydl.download([url])
+                if 'successful_config' in locals() and successful_config:
+                    logger.info("Using successful fallback configuration for download...")
+                    with yt_dlp.YoutubeDL(successful_config) as download_ydl:
+                        download_ydl.download([url])
                 else:
                     ydl.download([url])
             

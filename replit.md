@@ -25,6 +25,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 
 **ANTI-BOT DETECTION ENHANCED (2025-08-19):** Implemented comprehensive anti-bot detection measures to bypass YouTube's bot blocking. Added fallback extraction strategies with browser-like headers, cookies support, and minimal configuration fallbacks. Includes automatic retry logic for bot detection scenarios.
 
+**YOUTUBE RESTRICTION BYPASS (2025-08-19):** Enhanced restriction bypass system to handle multiple YouTube blocking methods including "content not available on this app" and "watch on latest version" errors. Implemented multi-tier fallback strategy with web browser, mobile, and minimal configurations. Includes Android and web player client switching for maximum compatibility.
+
 **CODE OPTIMIZATION (2025-08-18):** Cleaned and optimized codebase by removing unused parameters, excessive logging, redundant error handling, and non-functional features. Streamlined download and search processes while maintaining core functionality.
 
 **ENHANCED (2025-08-17):** Added unlimited multitasking - users can now send 50+ downloads simultaneously. Improved session management messages in Azerbaijani for expired search results.
