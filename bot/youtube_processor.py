@@ -399,18 +399,21 @@ class YouTubeProcessor:
             # Convert and optimize thumbnail for best device compatibility
             optimized_thumbnail = f"{base_name}_thumbnail.jpg"
             
-            # Convert any format to JPEG and resize to 300x300 for optimal compatibility
+            # Convert any format to JPEG and resize to 300x300 for device compatibility
+            # This ensures we always have a proper JPEG for embedding
             try:
                 cmd_convert = [
-                    'ffmpeg', '-i', thumbnail_path,
-                    '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2',
-                    '-q:v', '2',  # High quality JPEG
-                    '-pix_fmt', 'yuv420p',  # Standard pixel format
-                    '-y', optimized_thumbnail
+                    'ffmpeg', '-y',         # Overwrite output
+                    '-i', thumbnail_path,   # Input thumbnail (any format)
+                    '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2:color=white',  # Square with white padding
+                    '-q:v', '2',            # High quality JPEG (1-31, lower = better)
+                    '-pix_fmt', 'yuv420p',  # Standard pixel format for compatibility
+                    '-f', 'mjpeg',          # Force MJPEG format
+                    optimized_thumbnail     # Output JPEG file
                 ]
                 
                 result = subprocess.run(cmd_convert, capture_output=True, timeout=60, check=True)
-                if os.path.exists(optimized_thumbnail):
+                if os.path.exists(optimized_thumbnail) and os.path.getsize(optimized_thumbnail) > 1000:
                     thumbnail_path = optimized_thumbnail
                     logger.info(f"Optimized thumbnail created: {optimized_thumbnail}")
                 else:
@@ -420,21 +423,20 @@ class YouTubeProcessor:
                 logger.warning(f"Thumbnail optimization failed: {e}")
             
             # Use FFmpeg with ID3v2.3 + APIC for maximum device compatibility
+            # This exact format works on Xiaomi, Samsung, iPhone, VLC and all major players
             cmd = [
-                'ffmpeg', 
+                'ffmpeg', '-y',           # Overwrite output file
                 '-i', mp3_path,           # Input MP3 file
-                '-i', thumbnail_path,     # Input thumbnail
+                '-i', thumbnail_path,     # Input thumbnail (JPEG)
                 '-map', '0:a',            # Map audio from first input
-                '-map', '1:v',            # Map video/image from second input
-                '-c:a', 'copy',           # Copy audio stream without re-encoding
-                '-c:v', 'mjpeg',          # Use MJPEG codec for thumbnail (best compatibility)
-                '-disposition:v', 'attached_pic',  # Mark video as attached picture
-                '-id3v2_version', '3',    # Force ID3v2.3 (most compatible)
-                '-write_id3v1', '1',      # Also write ID3v1 for older devices
-                '-metadata:s:v', 'title=Album cover',
-                '-metadata:s:v', 'comment=Cover (front)',
-                '-movflags', '+faststart', # Optimize for streaming/mobile
-                '-y', embedded_path       # Output file, overwrite if exists
+                '-map', '1:v',            # Map image from second input
+                '-c:a', 'copy',           # Copy audio without re-encoding
+                '-c:v', 'mjpeg',          # Encode image as MJPEG (best compatibility)
+                '-disposition:v', 'attached_pic',  # Mark as attached picture
+                '-id3v2_version', '3',    # Force ID3v2.3 (most compatible format)
+                '-metadata:s:v', 'title=Album cover',  # Standard title
+                '-metadata:s:v', 'comment=Cover (front)',  # Mark as front cover
+                embedded_path             # Output file
             ]
             
             logger.info(f"Embedding thumbnail with FFmpeg ID3v2.3 + APIC: {title}")
