@@ -1,0 +1,41 @@
+2025-08-19 00:42:23,167 - __main__ - INFO - Starting YouTube to MP3 Bot with unlimited concurrency...
+2025-08-19 00:42:23,658 - telegram.ext.Application - INFO - Application started
+2025-08-19 00:42:49,274 - bot.youtube_processor - INFO - Stored main loop reference: <_UnixSelectorEventLoop running=True closed=False debug=False>
+2025-08-19 00:42:49,275 - bot.youtube_processor - INFO - Starting download for URL: https://www.youtube.com/watch?v=GF9C_hIBeyU
+ERROR: [youtube] GF9C_hIBeyU: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+2025-08-19 00:42:50,518 - bot.youtube_processor - ERROR - Download error: ERROR: [youtube] GF9C_hIBeyU: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+2025-08-19 00:42:50,521 - bot.youtube_processor - ERROR - Traceback: Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py", line 1668, in wrapper
+    return func(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py", line 1803, in __extract_info
+    ie_result = ie.extract(url)
+                ^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/extractor/common.py", line 761, in extract
+    ie_result = self._real_extract(url)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/extractor/youtube/_video.py", line 3945, in _real_extract
+    self.raise_no_formats(reason, expected=True)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/extractor/common.py", line 1273, in raise_no_formats
+    raise ExtractorError(msg, expected=expected, video_id=video_id)
+yt_dlp.utils.ExtractorError: [youtube] GF9C_hIBeyU: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/runner/workspace/bot/youtube_processor.py", line 128, in _download_video
+    info = ydl.extract_info(url, download=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py", line 1657, in extract_info
+    return self.__extract_info(url, self.get_info_extractor(key), download, extra_info, process)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py", line 1686, in wrapper
+    self.report_error(str(e), e.format_traceback())
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py", line 1126, in report_error
+    self.trouble(f'{self._format_err("ERROR:", self.Styles.ERROR)} {message}', *args, **kwargs)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/yt_dlp/YoutubeDL.py", line 1065, in trouble
+    raise DownloadError(message, exc_info)
+yt_dlp.utils.DownloadError: ERROR: [youtube] GF9C_hIBeyU: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+
+^C2025-08-19 00:42:58,949 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-08-19 00:42:58,949 - telegram.ext.Application - INFO - Application.stop() complete

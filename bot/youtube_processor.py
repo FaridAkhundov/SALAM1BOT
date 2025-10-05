@@ -4,9 +4,12 @@ import os
 import asyncio
 import logging
 import time
+import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import yt_dlp
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, ID3NoHeaderError
 from config import (
     TEMP_DIR, MAX_FILE_SIZE_BYTES, DOWNLOAD_TIMEOUT, 
     AUDIO_QUALITY, AUDIO_FORMAT, ERROR_MESSAGES
@@ -93,7 +96,11 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
+<<<<<<< HEAD
             # Enhanced yt-dlp options with improved connection handling
+=======
+            # Enhanced yt-dlp options with advanced anti-detection measures
+>>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
             ydl_opts = {
                 'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm][filesize<45M]/bestaudio',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -123,6 +130,7 @@ class YouTubeProcessor:
                 'file_access_retries': 2,
                 'concurrent_fragment_downloads': 8,  # More parallel downloads
                 'keepvideo': False,
+<<<<<<< HEAD
                 # User-Agent to avoid detection
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -223,6 +231,158 @@ class YouTubeProcessor:
                     import time
                     time.sleep(2 ** attempt)
                     continue
+=======
+                # Advanced anti-bot detection measures
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                },
+                'extractor_args': {
+                    'youtube': {
+                        'skip': ['hls', 'dash'],  # Skip problematic formats
+                        'player_skip': ['configs'],  # Skip player configs that may trigger detection
+                    }
+                },
+                # Use browser-like behavior
+                'cookies_from_browser': ('chrome',),  # Try to use Chrome cookies if available
+                'age_limit': 0,  # Don't skip age-restricted content
+                'ignoreerrors': False,  # Don't ignore errors, handle them properly
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                try:
+                    info = ydl.extract_info(url, download=False)
+                except (yt_dlp.utils.ExtractorError, yt_dlp.utils.DownloadError) as e:
+                    error_msg = str(e)
+                    if any(phrase in error_msg for phrase in [
+                        "Sign in to confirm you're not a bot",
+                        "The following content is not available on this app",
+                        "Watch on the latest version of YouTube"
+                    ]):
+                        # Try fallback options for YouTube restrictions
+                        logger.warning(f"YouTube restriction encountered: {error_msg[:100]}...")
+                        logger.warning("Trying fallback extraction methods...")
+                        
+                        # Try different user agents and configurations
+                        fallback_configs = [
+                            # Standard web browser
+                            {
+                                **ydl_opts,
+                                'http_headers': {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                    'Accept': '*/*',
+                                    'Accept-Language': 'en-US,en;q=0.9',
+                                    'Sec-Fetch-Mode': 'navigate',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android', 'web'],
+                                        'skip': ['hls'],
+                                    }
+                                },
+                            },
+                            # Mobile user agent
+                            {
+                                **ydl_opts,
+                                'http_headers': {
+                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
+                            },
+                            # Minimal configuration with no cookies
+                            {
+                                'format': 'bestaudio/best[filesize<45M]',
+                                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
+                                'writethumbnail': True,
+                                'postprocessors': [
+                                    {
+                                        'key': 'FFmpegExtractAudio',
+                                        'preferredcodec': 'mp3',
+                                        'preferredquality': '192',
+                                    }
+                                ],
+                                'progress_hooks': [progress_hook],
+                                'noplaylist': True,
+                                'quiet': True,
+                                'no_warnings': True,
+                                'http_headers': {
+                                    'User-Agent': 'yt-dlp/2025.08.11',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
+                            },
+                            # Ultra minimal - no postprocessors
+                            {
+                                'format': 'bestaudio',
+                                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
+                                'noplaylist': True,
+                                'quiet': True,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
+                            }
+                        ]
+                        
+                        info = None
+                        successful_config = None
+                        
+                        for i, config in enumerate(fallback_configs):
+                            try:
+                                logger.info(f"Trying fallback configuration {i+1}/{len(fallback_configs)}...")
+                                with yt_dlp.YoutubeDL(config) as fallback_ydl:
+                                    info = fallback_ydl.extract_info(url, download=False)
+                                    successful_config = config
+                                    logger.info(f"✓ Fallback configuration {i+1} successful!")
+                                    break
+                            except Exception as fallback_error:
+                                logger.warning(f"✗ Fallback {i+1} failed: {str(fallback_error)[:100]}")
+                                continue
+                        
+                        if not info:
+                            raise e  # Re-raise original error if all fallbacks fail
+                            
+                    else:
+                        raise e
+                
+                if not info:
+                    return {
+                        "success": False,
+                        "error": ERROR_MESSAGES["download_failed"]
+                    }
+                
+                title = info.get('title', 'Unknown Title')
+                uploader = info.get('uploader', 'Unknown Artist')
+                duration = info.get('duration', 0)
+                
+                estimated_size = duration * 24000
+                if estimated_size > MAX_FILE_SIZE_BYTES:
+                    return {
+                        "success": False,
+                        "error": ERROR_MESSAGES["file_too_large"]
+                    }
+                
+                # Use the same configuration for download that worked for extraction
+                if 'successful_config' in locals() and successful_config:
+                    logger.info("Using successful fallback configuration for download...")
+                    with yt_dlp.YoutubeDL(successful_config) as download_ydl:
+                        download_ydl.download([url])
+                else:
+                    ydl.download([url])
+>>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
             
             file_path = self._find_converted_file(title)
             if not file_path or not os.path.exists(file_path):
@@ -250,7 +410,7 @@ class YouTubeProcessor:
             if thumbnail_path and os.path.exists(thumbnail_path):
                 try:
                     logger.info(f"Attempting thumbnail embedding for: {title}")
-                    embedded_file_path = self._embed_thumbnail_with_ffmpeg(file_path, thumbnail_path, title)
+                    embedded_file_path = self._embed_thumbnail_with_mutagen(file_path, thumbnail_path, title)
                     if embedded_file_path and os.path.exists(embedded_file_path) and embedded_file_path != file_path:
                         # Check if embedded file is valid and has reasonable size
                         embedded_size = os.path.getsize(embedded_file_path)
@@ -300,11 +460,38 @@ class YouTubeProcessor:
             return []
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
+<<<<<<< HEAD
         # Implement retry mechanism for search as well
         max_attempts = 2
         for attempt in range(max_attempts):
             try:
                 logger.info(f"Search attempt {attempt + 1} for query: {query}")
+=======
+        try:
+            search_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True,
+                'default_search': 'ytsearch',
+                'socket_timeout': 60,
+                'read_timeout': 60,
+                # Anti-bot measures for search
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                },
+                'extractor_args': {
+                    'youtube': {
+                        'skip': ['hls', 'dash'],
+                        'player_skip': ['configs'],
+                    }
+                },
+            }
+            
+            with yt_dlp.YoutubeDL(search_opts) as ydl:
+                search_query = f"ytsearch{max_results}:{query}"
+                search_results = ydl.extract_info(search_query, download=False)
+>>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
                 
                 search_opts = {
                     'quiet': True,
@@ -364,14 +551,18 @@ class YouTubeProcessor:
                 
         return []  # Fallback
     
-    def _embed_thumbnail_with_ffmpeg(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
+    def _embed_thumbnail_with_mutagen(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
+        """
+        Embed thumbnail using Mutagen library with ID3v2.3 for maximum device compatibility.
+        This method works perfectly on Xiaomi 13T Pro, Samsung Music, iPhone, VLC, etc.
+        """
         try:
-            import subprocess
             import shutil
             
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
+<<<<<<< HEAD
             # Quick thumbnail conversion for speed
             if thumbnail_path.lower().endswith('.webp') or thumbnail_path.lower().endswith('.png'):
                 jpeg_path = thumbnail_path.replace('.webp', '.jpg').replace('.png', '.jpg')
@@ -412,6 +603,86 @@ class YouTubeProcessor:
                 
         except Exception as e:
             logger.warning(f"Thumbnail embedding failed: {e}")
+=======
+            # Convert and optimize thumbnail for best device compatibility
+            optimized_thumbnail = f"{base_name}_thumbnail.jpg"
+            
+            # Convert any format to JPEG and resize to 300x300 for device compatibility
+            try:
+                cmd_convert = [
+                    'ffmpeg', '-y',         # Overwrite output
+                    '-i', thumbnail_path,   # Input thumbnail (any format)
+                    '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2:color=white',
+                    '-q:v', '2',            # High quality JPEG
+                    '-pix_fmt', 'yuv420p',  # Standard pixel format
+                    '-f', 'mjpeg',          # Force MJPEG format
+                    optimized_thumbnail     # Output JPEG file
+                ]
+                
+                result = subprocess.run(cmd_convert, capture_output=True, timeout=60, check=True)
+                if os.path.exists(optimized_thumbnail) and os.path.getsize(optimized_thumbnail) > 1000:
+                    thumbnail_path = optimized_thumbnail
+                    logger.info(f"Optimized thumbnail created: {optimized_thumbnail}")
+                else:
+                    logger.warning("Thumbnail optimization failed, using original")
+                    
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"Thumbnail optimization failed: {e}")
+            
+            # Copy original MP3 file
+            shutil.copy2(mp3_path, embedded_path)
+            
+            # Read thumbnail image data
+            with open(thumbnail_path, 'rb') as img_file:
+                img_data = img_file.read()
+            
+            # Load MP3 file with Mutagen
+            try:
+                audio = MP3(embedded_path, ID3=ID3)
+            except ID3NoHeaderError:
+                # Add ID3 header if it doesn't exist
+                audio = MP3(embedded_path)
+                audio.add_tags()
+            
+            # Clear any existing album art
+            audio.tags.delall('APIC')
+            
+            # Add album art with ID3v2.3 format - this is the key for device compatibility
+            audio.tags.add(
+                APIC(
+                    encoding=3,        # UTF-8 encoding
+                    mime='image/jpeg', # MIME type for JPEG
+                    type=3,            # Front cover (type 3)
+                    desc='Cover',      # Description
+                    data=img_data      # Image data
+                )
+            )
+            
+            # Force save as ID3v2.3 (most compatible version)
+            audio.tags.update_to_v23()
+            audio.save(v2_version=3, v23_sep='/')
+            
+            logger.info(f"✓ Mutagen ID3v2.3 + APIC embedding successful for: {title}")
+            
+            if os.path.exists(embedded_path):
+                original_size = os.path.getsize(mp3_path)
+                embedded_size = os.path.getsize(embedded_path)
+                logger.info(f"File size: {original_size} → {embedded_size} bytes")
+                
+                # Clean up optimized thumbnail if we created one
+                if optimized_thumbnail != thumbnail_path and os.path.exists(optimized_thumbnail):
+                    os.remove(optimized_thumbnail)
+                
+                return embedded_path
+            else:
+                logger.warning(f"Embedded file not created: {embedded_path}")
+                return mp3_path
+                
+        except Exception as e:
+            logger.error(f"Exception during FFmpeg thumbnail embedding: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+>>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
             return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
