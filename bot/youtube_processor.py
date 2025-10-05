@@ -7,6 +7,7 @@ import time
 import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 import yt_dlp
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, ID3NoHeaderError
@@ -27,6 +28,9 @@ class YouTubeProcessor:
         self.search_executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="search")
         # Connection pooling for better performance
         self.session_pool = {}
+        # Progress tracking
+        self._last_progress_update = 0
+        self._last_progress_value = -1
     
     async def download_and_convert(self, url: str, progress_callback=None) -> dict:
         try:
@@ -348,11 +352,16 @@ class YouTubeProcessor:
                 'extract_flat': True,
                 'default_search': 'ytsearch',
                 'socket_timeout': 30,
+                'extractor_retries': 3,
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Accept-Encoding': 'gzip, deflate, br',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
                 },
                 'extractor_args': {
                     'youtube': {
@@ -361,25 +370,77 @@ class YouTubeProcessor:
                 },
             }
             
+            search_results = None
+            search_query = f"ytsearch{max_results}:{query}"
+            
             with yt_dlp.YoutubeDL(search_opts) as ydl:
-                search_query = f"ytsearch{max_results}:{query}"
-                search_results = ydl.extract_info(search_query, download=False)
-                
-                videos = []
-                if search_results and 'entries' in search_results:
-                    for entry in search_results['entries']:
-                        if entry and entry.get('id') and len(entry.get('id', '')) == 11:
-                            title = entry.get('title', 'Unknown Title')
-                            if title and title not in ['[Deleted video]', '[Private video]']:
-                                videos.append({
-                                    'title': title,
-                                    'url': f"https://www.youtube.com/watch?v={entry['id']}",
-                                    'uploader': entry.get('uploader', 'Unknown Artist'),
-                                    'duration': entry.get('duration', 0),
-                                    'id': entry['id']
-                                })
-                
-                return videos
+                try:
+                    search_results = ydl.extract_info(search_query, download=False)
+                except Exception as e:
+                    error_msg = str(e)
+                    if "JSON" in error_msg or "parse" in error_msg.lower():
+                        logger.warning(f"Search JSON error, trying fallback clients...")
+                        
+                        fallback_configs = [
+                            {
+                                **search_opts,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['web', 'mweb'],
+                                    }
+                                },
+                            },
+                            {
+                                **search_opts,
+                                'http_headers': {
+                                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                    'Accept-Language': 'en-US,en;q=0.9',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['ios'],
+                                    }
+                                },
+                            },
+                            {
+                                **search_opts,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android'],
+                                    }
+                                },
+                            },
+                        ]
+                        
+                        for i, config in enumerate(fallback_configs):
+                            try:
+                                logger.info(f"Search fallback {i+1}/{len(fallback_configs)}...")
+                                with yt_dlp.YoutubeDL(config) as fallback_ydl:
+                                    search_results = fallback_ydl.extract_info(search_query, download=False)
+                                    logger.info(f"✓ Search fallback {i+1} successful!")
+                                    break
+                            except Exception as fallback_error:
+                                logger.warning(f"✗ Search fallback {i+1} failed: {str(fallback_error)[:100]}")
+                                continue
+                    else:
+                        raise e
+            
+            videos = []
+            if search_results and 'entries' in search_results:
+                for entry in search_results['entries']:
+                    if entry and entry.get('id') and len(entry.get('id', '')) == 11:
+                        title = entry.get('title', 'Unknown Title')
+                        if title and title not in ['[Deleted video]', '[Private video]']:
+                            videos.append({
+                                'title': title,
+                                'url': f"https://www.youtube.com/watch?v={entry['id']}",
+                                'uploader': entry.get('uploader', 'Unknown Artist'),
+                                'duration': entry.get('duration', 0),
+                                'id': entry['id']
+                            })
+            
+            return videos
                 
         except Exception as e:
             logger.error(f"Search error: {e}")
@@ -490,7 +551,7 @@ class YouTubeProcessor:
         
         return ""
     
-    def _find_thumbnail_file(self, title: str, video_id: str = None) -> str:
+    def _find_thumbnail_file(self, title: str, video_id: Optional[str] = None) -> Optional[str]:
         temp_path = Path(TEMP_DIR)
         if not temp_path.exists():
             return None
