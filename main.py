@@ -44,8 +44,8 @@ def main():
     # Add error handler
     application.add_error_handler(error_handler)
     
-    # Start the bot with unlimited concurrent processing
-    logger.info("Starting YouTube to MP3 Bot with unlimited concurrency...")
+    # Start the bot with optimized concurrent processing
+    logger.info("Starting YouTube to MP3 Bot with optimized concurrency...")
     application.run_polling(
         allowed_updates=["message", "callback_query"],
         close_loop=False  # Keep loop open for better performance

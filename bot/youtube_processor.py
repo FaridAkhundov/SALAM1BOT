@@ -22,9 +22,9 @@ class YouTubeProcessor:
     def __init__(self):
         Path(TEMP_DIR).mkdir(exist_ok=True)
         self.progress_callback = None
-        # Maximum workers for unlimited concurrency - supports 100+ simultaneous operations
-        self.download_executor = ThreadPoolExecutor(max_workers=50, thread_name_prefix="download")
-        self.search_executor = ThreadPoolExecutor(max_workers=25, thread_name_prefix="search")
+        # Optimized concurrency to avoid YouTube rate limiting
+        self.download_executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="download")
+        self.search_executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="search")
         # Connection pooling for better performance
         self.session_pool = {}
     
@@ -96,9 +96,9 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-            # Enhanced yt-dlp options with advanced anti-detection measures
+            # Web browser-first configuration for maximum compatibility
             ydl_opts = {
-                'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm][filesize<45M]/bestaudio',
+                'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
                 'writethumbnail': True,
                 'writeinfojson': False,
@@ -106,7 +106,7 @@ class YouTubeProcessor:
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
-                        'preferredquality': '96',
+                        'preferredquality': '192',
                     },
                     {
                         'key': 'FFmpegMetadata',
@@ -117,33 +117,40 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                'socket_timeout': 20,
-                'http_timeout': 20,    
-                'extractor_retries': 2,
-                'fragment_retries': 2,   
-                'retries': 1,
-                'file_access_retries': 2,
-                'concurrent_fragment_downloads': 8,
+                'socket_timeout': 30,
+                'http_timeout': 30,    
+                'extractor_retries': 3,
+                'fragment_retries': 3,   
+                'retries': 3,
+                'file_access_retries': 3,
+                'concurrent_fragment_downloads': 4,
                 'keepvideo': False,
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
                     'DNT': '1',
                     'Connection': 'keep-alive',
                     'Upgrade-Insecure-Requests': '1',
+                    'Sec-Fetch-Dest': 'document',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-User': '?1',
                 },
                 'extractor_args': {
                     'youtube': {
-                        'skip': ['hls', 'dash'],
-                        'player_skip': ['configs'],
+                        'player_client': ['web'],
+                        'player_skip': ['webpage'],
                     }
                 },
-                'cookies_from_browser': ('chrome',),
                 'age_limit': 0,
                 'ignoreerrors': False,
             }
+            
+            # Track successful configuration for download
+            successful_config = None
+            info = None
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
@@ -161,32 +168,40 @@ class YouTubeProcessor:
                         fallback_configs = [
                             {
                                 **ydl_opts,
-                                'http_headers': {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                    'Accept': '*/*',
-                                    'Accept-Language': 'en-US,en;q=0.9',
-                                    'Sec-Fetch-Mode': 'navigate',
-                                },
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android', 'web'],
-                                        'skip': ['hls'],
+                                        'player_client': ['web', 'mweb'],
                                     }
                                 },
                             },
                             {
                                 **ydl_opts,
                                 'http_headers': {
-                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36',
+                                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                    'Accept-Language': 'en-US,en;q=0.9',
                                 },
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android'],
+                                        'player_client': ['ios'],
                                     }
                                 },
                             },
                             {
-                                'format': 'bestaudio/best[filesize<45M]',
+                                **ydl_opts,
+                                'http_headers': {
+                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                                    'Accept-Language': 'en-US,en;q=0.9',
+                                },
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['android', 'mweb'],
+                                    }
+                                },
+                            },
+                            {
+                                'format': 'bestaudio/best',
                                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
                                 'writethumbnail': True,
                                 'postprocessors': [
@@ -200,30 +215,13 @@ class YouTubeProcessor:
                                 'noplaylist': True,
                                 'quiet': True,
                                 'no_warnings': True,
-                                'http_headers': {
-                                    'User-Agent': 'yt-dlp/2025.08.11',
-                                },
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android'],
-                                    }
-                                },
-                            },
-                            {
-                                'format': 'bestaudio',
-                                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
-                                'noplaylist': True,
-                                'quiet': True,
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['android'],
+                                        'player_client': ['tv_embedded'],
                                     }
                                 },
                             }
                         ]
-                        
-                        info = None
-                        successful_config = None
                         
                         for i, config in enumerate(fallback_configs):
                             try:
@@ -260,7 +258,6 @@ class YouTubeProcessor:
                         "error": ERROR_MESSAGES["file_too_large"]
                     }
                 
-                successful_config = locals().get('successful_config')
                 if successful_config:
                     logger.info("Using successful fallback configuration for download...")
                     with yt_dlp.YoutubeDL(successful_config) as download_ydl:
@@ -350,16 +347,16 @@ class YouTubeProcessor:
                 'no_warnings': True,
                 'extract_flat': True,
                 'default_search': 'ytsearch',
-                'socket_timeout': 60,
-                'read_timeout': 60,
+                'socket_timeout': 30,
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                    'Accept-Language': 'en-US,en;q=0.5',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
                 },
                 'extractor_args': {
                     'youtube': {
-                        'skip': ['hls', 'dash'],
-                        'player_skip': ['configs'],
+                        'player_client': ['web'],
                     }
                 },
             }
