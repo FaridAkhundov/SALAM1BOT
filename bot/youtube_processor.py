@@ -349,8 +349,8 @@ class YouTubeProcessor:
             search_opts = {
                 'quiet': True,
                 'no_warnings': True,
-                'extract_flat': True,
-                'default_search': 'ytsearch',
+                'extract_flat': 'in_playlist',
+                'playlist_items': f'1:{max_results}',
                 'socket_timeout': 30,
                 'extractor_retries': 3,
                 'http_headers': {
@@ -366,6 +366,7 @@ class YouTubeProcessor:
                 'extractor_args': {
                     'youtube': {
                         'player_client': ['web'],
+                        'player_skip': ['webpage'],
                     }
                 },
             }
