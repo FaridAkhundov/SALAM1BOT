@@ -96,11 +96,7 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-<<<<<<< HEAD
-            # Enhanced yt-dlp options with improved connection handling
-=======
             # Enhanced yt-dlp options with advanced anti-detection measures
->>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
             ydl_opts = {
                 'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm][filesize<45M]/bestaudio',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -110,7 +106,7 @@ class YouTubeProcessor:
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
-                        'preferredquality': '96',   # Even lower for max speed
+                        'preferredquality': '96',
                     },
                     {
                         'key': 'FFmpegMetadata',
@@ -121,118 +117,14 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                # Optimized for speed
                 'socket_timeout': 20,
                 'http_timeout': 20,    
-                'extractor_retries': 2,  # Faster failure
+                'extractor_retries': 2,
                 'fragment_retries': 2,   
-                'retries': 1,           # Minimal retries
+                'retries': 1,
                 'file_access_retries': 2,
-                'concurrent_fragment_downloads': 8,  # More parallel downloads
+                'concurrent_fragment_downloads': 8,
                 'keepvideo': False,
-<<<<<<< HEAD
-                # User-Agent to avoid detection
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                },
-                # Additional stability options
-                'force_json': False,
-                'ignoreerrors': False,
-                'abort_on_error': True,  # Fail fast instead of hanging
-            }
-            
-            # Initialize variables with defaults to avoid "unbound" errors
-            title = 'Unknown Title'
-            uploader = 'Unknown Artist'
-            duration = 0
-            
-            # Fast retry mechanism with minimal attempts
-            max_attempts = 2  # Reduce retry attempts for speed
-            for attempt in range(max_attempts):
-                try:
-                    logger.info(f"Download attempt {attempt + 1} for URL: {url}")
-                    
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                        # First extract info
-                        info = ydl.extract_info(url, download=False)
-                        
-                        if not info:
-                            if attempt == max_attempts - 1:  # Last attempt
-                                return {
-                                    "success": False,
-                                    "error": "❌ Video məlumatları alına bilmədi. Link düzgün olduğundan əmin olun."
-                                }
-                            continue
-                        
-                        title = info.get('title', 'Unknown Title')
-                        uploader = info.get('uploader', 'Unknown Artist') 
-                        duration = info.get('duration', 0)
-                        
-                        estimated_size = duration * 24000
-                        if estimated_size > MAX_FILE_SIZE_BYTES:
-                            return {
-                                "success": False,
-                                "error": ERROR_MESSAGES["file_too_large"]
-                            }
-                        
-                        # Now download the video
-                        logger.info(f"Starting download for: {title}")
-                        ydl.download([url])
-                        break  # Success, exit retry loop
-                        
-                except yt_dlp.utils.ExtractorError as e:
-                    error_msg = str(e).lower()
-                    logger.error(f"Extractor error on attempt {attempt + 1}: {e}")
-                    
-                    if attempt == max_attempts - 1:  # Last attempt
-                        if "unavailable" in error_msg or "not available" in error_msg:
-                            return {
-                                "success": False,
-                                "error": "❌ Video mövcud deyil və ya giriş məhdudlaşdırılıb."
-                            }
-                        elif "copyright" in error_msg:
-                            return {
-                                "success": False,
-                                "error": "❌ Müəlliflik hüquqları səbəbindən video əlçatan deyil."
-                            }
-                        else:
-                            return {
-                                "success": False,
-                                "error": f"❌ Video yüklənə bilmədi: {str(e)[:100]}"
-                            }
-                    
-                    # Wait before retry (exponential backoff)
-                    import time
-                    time.sleep(2 ** attempt)
-                    continue
-                    
-                except (ConnectionError, OSError, Exception) as e:
-                    error_msg = str(e).lower()
-                    logger.error(f"Connection/OS error on attempt {attempt + 1}: {e}")
-                    
-                    if attempt == max_attempts - 1:  # Last attempt
-                        if "getaddrinfo failed" in error_msg or "connection" in error_msg:
-                            return {
-                                "success": False,
-                                "error": "❌ İnternet bağlantısı problemi. Bir neçə dəqiqə sonra yenidən cəhd edin."
-                            }
-                        elif "timeout" in error_msg:
-                            return {
-                                "success": False,
-                                "error": "❌ Zaman aşımı. Video çox böyük ola bilər. Yenidən cəhd edin."
-                            }
-                        else:
-                            return {
-                                "success": False,
-                                "error": f"❌ Sistem xətası: {str(e)[:100]}"
-                            }
-                    
-                    # Wait before retry (exponential backoff)
-                    import time
-                    time.sleep(2 ** attempt)
-                    continue
-=======
-                # Advanced anti-bot detection measures
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -244,14 +136,13 @@ class YouTubeProcessor:
                 },
                 'extractor_args': {
                     'youtube': {
-                        'skip': ['hls', 'dash'],  # Skip problematic formats
-                        'player_skip': ['configs'],  # Skip player configs that may trigger detection
+                        'skip': ['hls', 'dash'],
+                        'player_skip': ['configs'],
                     }
                 },
-                # Use browser-like behavior
-                'cookies_from_browser': ('chrome',),  # Try to use Chrome cookies if available
-                'age_limit': 0,  # Don't skip age-restricted content
-                'ignoreerrors': False,  # Don't ignore errors, handle them properly
+                'cookies_from_browser': ('chrome',),
+                'age_limit': 0,
+                'ignoreerrors': False,
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -264,13 +155,10 @@ class YouTubeProcessor:
                         "The following content is not available on this app",
                         "Watch on the latest version of YouTube"
                     ]):
-                        # Try fallback options for YouTube restrictions
                         logger.warning(f"YouTube restriction encountered: {error_msg[:100]}...")
                         logger.warning("Trying fallback extraction methods...")
                         
-                        # Try different user agents and configurations
                         fallback_configs = [
-                            # Standard web browser
                             {
                                 **ydl_opts,
                                 'http_headers': {
@@ -286,7 +174,6 @@ class YouTubeProcessor:
                                     }
                                 },
                             },
-                            # Mobile user agent
                             {
                                 **ydl_opts,
                                 'http_headers': {
@@ -298,7 +185,6 @@ class YouTubeProcessor:
                                     }
                                 },
                             },
-                            # Minimal configuration with no cookies
                             {
                                 'format': 'bestaudio/best[filesize<45M]',
                                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -323,7 +209,6 @@ class YouTubeProcessor:
                                     }
                                 },
                             },
-                            # Ultra minimal - no postprocessors
                             {
                                 'format': 'bestaudio',
                                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -353,7 +238,7 @@ class YouTubeProcessor:
                                 continue
                         
                         if not info:
-                            raise e  # Re-raise original error if all fallbacks fail
+                            raise e
                             
                     else:
                         raise e
@@ -375,14 +260,13 @@ class YouTubeProcessor:
                         "error": ERROR_MESSAGES["file_too_large"]
                     }
                 
-                # Use the same configuration for download that worked for extraction
-                if 'successful_config' in locals() and successful_config:
+                successful_config = locals().get('successful_config')
+                if successful_config:
                     logger.info("Using successful fallback configuration for download...")
                     with yt_dlp.YoutubeDL(successful_config) as download_ydl:
                         download_ydl.download([url])
                 else:
                     ydl.download([url])
->>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
             
             file_path = self._find_converted_file(title)
             if not file_path or not os.path.exists(file_path):
@@ -460,13 +344,6 @@ class YouTubeProcessor:
             return []
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
-<<<<<<< HEAD
-        # Implement retry mechanism for search as well
-        max_attempts = 2
-        for attempt in range(max_attempts):
-            try:
-                logger.info(f"Search attempt {attempt + 1} for query: {query}")
-=======
         try:
             search_opts = {
                 'quiet': True,
@@ -475,7 +352,6 @@ class YouTubeProcessor:
                 'default_search': 'ytsearch',
                 'socket_timeout': 60,
                 'read_timeout': 60,
-                # Anti-bot measures for search
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
                     'Accept-Language': 'en-US,en;q=0.5',
@@ -491,65 +367,26 @@ class YouTubeProcessor:
             with yt_dlp.YoutubeDL(search_opts) as ydl:
                 search_query = f"ytsearch{max_results}:{query}"
                 search_results = ydl.extract_info(search_query, download=False)
->>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
                 
-                search_opts = {
-                    'quiet': True,
-                    'no_warnings': True,
-                    'extract_flat': True,
-                    'default_search': 'ytsearch',
-                    'socket_timeout': 30,  # Reduced timeout
-                    'http_timeout': 30,    # Added HTTP timeout
-                    'extractor_retries': 2,  # Reduced retries
-                    'retries': 1,           # Reduced retries
-                    'abort_on_error': True,  # Fail fast
-                    # User-Agent to avoid detection
-                    'http_headers': {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                    },
-                }
+                videos = []
+                if search_results and 'entries' in search_results:
+                    for entry in search_results['entries']:
+                        if entry and entry.get('id') and len(entry.get('id', '')) == 11:
+                            title = entry.get('title', 'Unknown Title')
+                            if title and title not in ['[Deleted video]', '[Private video]']:
+                                videos.append({
+                                    'title': title,
+                                    'url': f"https://www.youtube.com/watch?v={entry['id']}",
+                                    'uploader': entry.get('uploader', 'Unknown Artist'),
+                                    'duration': entry.get('duration', 0),
+                                    'id': entry['id']
+                                })
                 
-                with yt_dlp.YoutubeDL(search_opts) as ydl:
-                    search_query = f"ytsearch{max_results}:{query}"
-                    search_results = ydl.extract_info(search_query, download=False)
-                    
-                    videos = []
-                    if search_results and 'entries' in search_results:
-                        for entry in search_results['entries']:
-                            if entry and entry.get('id') and len(entry.get('id', '')) == 11:
-                                title = entry.get('title', 'Unknown Title')
-                                if title and title not in ['[Deleted video]', '[Private video]']:
-                                    videos.append({
-                                        'title': title,
-                                        'url': f"https://www.youtube.com/watch?v={entry['id']}",
-                                        'uploader': entry.get('uploader', 'Unknown Artist'),
-                                        'duration': entry.get('duration', 0),
-                                        'id': entry['id']
-                                    })
-                    
-                    return videos
-                    
-            except (ConnectionError, OSError, Exception) as e:
-                error_msg = str(e).lower()
-                logger.error(f"Search error on attempt {attempt + 1}: {e}")
+                return videos
                 
-                if attempt == max_attempts - 1:  # Last attempt
-                    if "getaddrinfo failed" in error_msg or "connection" in error_msg:
-                        logger.error("Search failed due to connection error")
-                        return []  # Return empty list to indicate search failure
-                    elif "timeout" in error_msg:
-                        logger.error("Search failed due to timeout")
-                        return []
-                    else:
-                        logger.error(f"Search failed with error: {error_msg}")
-                        return []
-                
-                # Wait before retry
-                import time
-                time.sleep(2 ** attempt)
-                continue
-                
-        return []  # Fallback
+        except Exception as e:
+            logger.error(f"Search error: {e}")
+            return []
     
     def _embed_thumbnail_with_mutagen(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
         """
@@ -562,61 +399,17 @@ class YouTubeProcessor:
             base_name = os.path.splitext(mp3_path)[0]
             embedded_path = f"{base_name}_embedded.mp3"
             
-<<<<<<< HEAD
-            # Quick thumbnail conversion for speed
-            if thumbnail_path.lower().endswith('.webp') or thumbnail_path.lower().endswith('.png'):
-                jpeg_path = thumbnail_path.replace('.webp', '.jpg').replace('.png', '.jpg')
-                try:
-                    # Simple fast conversion without resize
-                    subprocess.run(['ffmpeg', '-i', thumbnail_path, '-q:v', '5', '-y', jpeg_path], 
-                                 capture_output=True, timeout=10, check=True)
-                    if os.path.exists(jpeg_path):
-                        thumbnail_path = jpeg_path
-                        logger.info(f"Converted thumbnail to JPEG: {jpeg_path}")
-                except subprocess.CalledProcessError:
-                    # Use original if conversion fails
-                    pass
-            
-            # Use FFmpeg method directly (more reliable than eyeD3)
-            cmd = [
-                'ffmpeg', '-i', mp3_path, '-i', thumbnail_path,
-                '-map', '0:a', '-map', '1:v',
-                '-c:a', 'copy',  # Copy audio without re-encoding
-                '-c:v', 'copy',   # Copy image without re-encoding
-                '-disposition:v', 'attached_pic',  # Mark as attached picture
-                '-metadata:s:v', 'title=Album cover',
-                '-metadata:s:v', 'comment=Cover (Front)',
-                '-id3v2_version', '3',  # Use ID3v2.3
-                '-write_id3v1', '1',    # Write ID3v1 for compatibility
-                '-y', embedded_path
-            ]
-            
-            logger.info(f"Using FFmpeg for thumbnail embedding: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, timeout=30)  # Faster timeout
-            
-            if result.returncode == 0 and os.path.exists(embedded_path):
-                logger.info(f"FFmpeg embedding successful. Output size: {os.path.getsize(embedded_path)} bytes")
-                return embedded_path
-            else:
-                logger.warning(f"FFmpeg thumbnail embedding failed. Return code: {result.returncode}")
-                return mp3_path
-                
-        except Exception as e:
-            logger.warning(f"Thumbnail embedding failed: {e}")
-=======
-            # Convert and optimize thumbnail for best device compatibility
             optimized_thumbnail = f"{base_name}_thumbnail.jpg"
             
-            # Convert any format to JPEG and resize to 300x300 for device compatibility
             try:
                 cmd_convert = [
-                    'ffmpeg', '-y',         # Overwrite output
-                    '-i', thumbnail_path,   # Input thumbnail (any format)
+                    'ffmpeg', '-y',
+                    '-i', thumbnail_path,
                     '-vf', 'scale=300:300:force_original_aspect_ratio=decrease,pad=300:300:(ow-iw)/2:(oh-ih)/2:color=white',
-                    '-q:v', '2',            # High quality JPEG
-                    '-pix_fmt', 'yuv420p',  # Standard pixel format
-                    '-f', 'mjpeg',          # Force MJPEG format
-                    optimized_thumbnail     # Output JPEG file
+                    '-q:v', '2',
+                    '-pix_fmt', 'yuv420p',
+                    '-f', 'mjpeg',
+                    optimized_thumbnail
                 ]
                 
                 result = subprocess.run(cmd_convert, capture_output=True, timeout=60, check=True)
@@ -629,36 +422,29 @@ class YouTubeProcessor:
             except subprocess.CalledProcessError as e:
                 logger.warning(f"Thumbnail optimization failed: {e}")
             
-            # Copy original MP3 file
             shutil.copy2(mp3_path, embedded_path)
             
-            # Read thumbnail image data
             with open(thumbnail_path, 'rb') as img_file:
                 img_data = img_file.read()
             
-            # Load MP3 file with Mutagen
             try:
                 audio = MP3(embedded_path, ID3=ID3)
             except ID3NoHeaderError:
-                # Add ID3 header if it doesn't exist
                 audio = MP3(embedded_path)
                 audio.add_tags()
             
-            # Clear any existing album art
             audio.tags.delall('APIC')
             
-            # Add album art with ID3v2.3 format - this is the key for device compatibility
             audio.tags.add(
                 APIC(
-                    encoding=3,        # UTF-8 encoding
-                    mime='image/jpeg', # MIME type for JPEG
-                    type=3,            # Front cover (type 3)
-                    desc='Cover',      # Description
-                    data=img_data      # Image data
+                    encoding=3,
+                    mime='image/jpeg',
+                    type=3,
+                    desc='Cover',
+                    data=img_data
                 )
             )
             
-            # Force save as ID3v2.3 (most compatible version)
             audio.tags.update_to_v23()
             audio.save(v2_version=3, v23_sep='/')
             
@@ -669,7 +455,6 @@ class YouTubeProcessor:
                 embedded_size = os.path.getsize(embedded_path)
                 logger.info(f"File size: {original_size} → {embedded_size} bytes")
                 
-                # Clean up optimized thumbnail if we created one
                 if optimized_thumbnail != thumbnail_path and os.path.exists(optimized_thumbnail):
                     os.remove(optimized_thumbnail)
                 
@@ -679,10 +464,9 @@ class YouTubeProcessor:
                 return mp3_path
                 
         except Exception as e:
-            logger.error(f"Exception during FFmpeg thumbnail embedding: {e}")
+            logger.error(f"Exception during thumbnail embedding: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
->>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
             return mp3_path
 
     def _find_converted_file(self, title: str) -> str:
