@@ -427,19 +427,32 @@ class YouTubeProcessor:
                         raise e
             
             videos = []
-            if search_results and 'entries' in search_results:
-                for entry in search_results['entries']:
-                    if entry and entry.get('id') and len(entry.get('id', '')) == 11:
-                        title = entry.get('title', 'Unknown Title')
-                        if title and title not in ['[Deleted video]', '[Private video]']:
-                            videos.append({
-                                'title': title,
-                                'url': f"https://www.youtube.com/watch?v={entry['id']}",
-                                'uploader': entry.get('uploader', 'Unknown Artist'),
-                                'duration': entry.get('duration', 0),
-                                'id': entry['id']
-                            })
+            if search_results:
+                logger.info(f"Search results type: {type(search_results)}, has entries: {'entries' in search_results if isinstance(search_results, dict) else 'N/A'}")
+                
+                if 'entries' in search_results:
+                    entries_count = len(search_results['entries']) if search_results['entries'] else 0
+                    logger.info(f"Found {entries_count} entries in search results")
+                    
+                    for entry in search_results['entries']:
+                        if entry:
+                            logger.info(f"Entry: id={entry.get('id')}, title={entry.get('title', 'N/A')[:50]}")
+                            if entry.get('id') and len(entry.get('id', '')) == 11:
+                                title = entry.get('title', 'Unknown Title')
+                                if title and title not in ['[Deleted video]', '[Private video]']:
+                                    videos.append({
+                                        'title': title,
+                                        'url': f"https://www.youtube.com/watch?v={entry['id']}",
+                                        'uploader': entry.get('uploader', 'Unknown Artist'),
+                                        'duration': entry.get('duration', 0),
+                                        'id': entry['id']
+                                    })
+                else:
+                    logger.warning("No 'entries' key in search results")
+            else:
+                logger.warning("Search results is None or empty")
             
+            logger.info(f"Returning {len(videos)} videos")
             return videos
                 
         except Exception as e:
