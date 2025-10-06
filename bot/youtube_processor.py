@@ -11,7 +11,6 @@ from typing import Optional
 import yt_dlp
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, ID3NoHeaderError
-from googleapiclient.discovery import build
 from config import (
     TEMP_DIR, MAX_FILE_SIZE_BYTES, DOWNLOAD_TIMEOUT, 
     AUDIO_QUALITY, AUDIO_FORMAT, ERROR_MESSAGES
@@ -347,42 +346,41 @@ class YouTubeProcessor:
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
         try:
-            api_key = os.getenv('YOUTUBE_API_KEY')
-            if not api_key:
-                logger.error("YOUTUBE_API_KEY not found in environment variables")
-                return []
+            logger.info(f"Searching YouTube with yt-dlp: {query}")
             
-            logger.info(f"Using YouTube Data API v3 for search: {query}")
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True,
+                'force_generic_extractor': False,
+            }
             
-            youtube = build('youtube', 'v3', developerKey=api_key)
+            search_url = f"ytsearch{max_results}:{query}"
             
-            search_response = youtube.search().list(
-                q=query,
-                part='id,snippet',
-                maxResults=max_results,
-                type='video',
-                videoCategoryId='10'
-            ).execute()
-            
-            videos = []
-            for item in search_response.get('items', []):
-                if item['id']['kind'] == 'youtube#video':
-                    video_id = item['id']['videoId']
-                    snippet = item['snippet']
-                    
-                    videos.append({
-                        'title': snippet['title'],
-                        'url': f"https://www.youtube.com/watch?v={video_id}",
-                        'uploader': snippet['channelTitle'],
-                        'duration': 0,
-                        'id': video_id
-                    })
-            
-            logger.info(f"YouTube Data API returned {len(videos)} videos")
-            return videos
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                search_results = ydl.extract_info(search_url, download=False)
+                
+                if not search_results or 'entries' not in search_results:
+                    logger.warning("No search results found")
+                    return []
+                
+                videos = []
+                for entry in search_results['entries']:
+                    if entry and entry.get('id'):
+                        video_id = entry['id']
+                        videos.append({
+                            'title': entry.get('title', 'Unknown Title'),
+                            'url': f"https://www.youtube.com/watch?v={video_id}",
+                            'uploader': entry.get('uploader', 'Unknown'),
+                            'duration': entry.get('duration', 0),
+                            'id': video_id
+                        })
+                
+                logger.info(f"yt-dlp search returned {len(videos)} videos")
+                return videos
                 
         except Exception as e:
-            logger.error(f"YouTube Data API search error: {e}")
+            logger.error(f"yt-dlp search error: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             return []
