@@ -100,55 +100,27 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-            # Web browser-first configuration for maximum compatibility
+            # Optimized TV Embedded configuration for best compatibility
             ydl_opts = {
-                'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
+                'format': 'bestaudio/best',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
                 'writethumbnail': True,
-                'writeinfojson': False,
                 'postprocessors': [
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
                         'preferredquality': '192',
                     },
-                    {
-                        'key': 'FFmpegMetadata',
-                        'add_metadata': True,
-                    },
                 ],
                 'progress_hooks': [progress_hook],
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                'socket_timeout': 30,
-                'http_timeout': 30,    
-                'extractor_retries': 3,
-                'fragment_retries': 3,   
-                'retries': 3,
-                'file_access_retries': 3,
-                'concurrent_fragment_downloads': 4,
-                'keepvideo': False,
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                },
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['android', 'web'],
+                        'player_client': ['tv_embedded'],
                     }
                 },
-                'age_limit': 0,
-                'ignoreerrors': False,
             }
             
             # Track successful configuration for download
@@ -174,17 +146,12 @@ class YouTubeProcessor:
                                 **ydl_opts,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['web', 'mweb'],
+                                        'player_client': ['android', 'web'],
                                     }
                                 },
                             },
                             {
                                 **ydl_opts,
-                                'http_headers': {
-                                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                                    'Accept-Language': 'en-US,en;q=0.9',
-                                },
                                 'extractor_args': {
                                     'youtube': {
                                         'player_client': ['ios'],
@@ -193,35 +160,9 @@ class YouTubeProcessor:
                             },
                             {
                                 **ydl_opts,
-                                'http_headers': {
-                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                                    'Accept-Language': 'en-US,en;q=0.9',
-                                },
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android', 'mweb'],
-                                    }
-                                },
-                            },
-                            {
-                                'format': 'bestaudio/best',
-                                'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
-                                'writethumbnail': True,
-                                'postprocessors': [
-                                    {
-                                        'key': 'FFmpegExtractAudio',
-                                        'preferredcodec': 'mp3',
-                                        'preferredquality': '192',
-                                    }
-                                ],
-                                'progress_hooks': [progress_hook],
-                                'noplaylist': True,
-                                'quiet': True,
-                                'no_warnings': True,
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['tv_embedded'],
+                                        'player_client': ['web'],
                                     }
                                 },
                             }
