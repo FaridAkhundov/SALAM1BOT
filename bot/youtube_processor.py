@@ -116,11 +116,23 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
+                'cookiefile': None,
+                'nocheckcertificate': True,
+                'geo_bypass': True,
+                'socket_timeout': 30,
                 'extractor_args': {
                     'youtube': {
                         'player_client': ['tv_embedded'],
+                        'skip': ['hls', 'dash'],
                     }
                 },
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-us,en;q=0.5',
+                    'Accept-Encoding': 'gzip,deflate',
+                    'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                }
             }
             
             # Track successful configuration for download
@@ -305,6 +317,12 @@ class YouTubeProcessor:
                 'no_warnings': True,
                 'extract_flat': True,
                 'force_generic_extractor': False,
+                'nocheckcertificate': True,
+                'geo_bypass': True,
+                'socket_timeout': 30,
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                }
             }
             
             search_url = f"ytsearch{max_results}:{query}"
