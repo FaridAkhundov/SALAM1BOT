@@ -136,7 +136,8 @@ class YouTubeProcessor:
                         "Sign in to confirm you're not a bot",
                         "The following content is not available on this app",
                         "Watch on the latest version of YouTube",
-                        "Failed to extract any player response"
+                        "Failed to extract any player response",
+                        "Please sign in"
                     ]):
                         logger.warning(f"YouTube restriction encountered: {error_msg[:100]}...")
                         logger.warning("Trying fallback extraction methods...")
@@ -146,7 +147,8 @@ class YouTubeProcessor:
                                 **ydl_opts,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android', 'web'],
+                                        'player_client': ['android'],
+                                        'player_skip': ['webpage', 'configs'],
                                     }
                                 },
                             },
@@ -155,6 +157,15 @@ class YouTubeProcessor:
                                 'extractor_args': {
                                     'youtube': {
                                         'player_client': ['ios'],
+                                        'player_skip': ['webpage', 'configs'],
+                                    }
+                                },
+                            },
+                            {
+                                **ydl_opts,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['mweb'],
                                     }
                                 },
                             },
