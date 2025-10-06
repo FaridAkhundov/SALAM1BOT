@@ -144,8 +144,7 @@ class YouTubeProcessor:
                 },
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['web'],
-                        'player_skip': ['webpage'],
+                        'player_client': ['android', 'web'],
                     }
                 },
                 'age_limit': 0,
@@ -164,7 +163,8 @@ class YouTubeProcessor:
                     if any(phrase in error_msg for phrase in [
                         "Sign in to confirm you're not a bot",
                         "The following content is not available on this app",
-                        "Watch on the latest version of YouTube"
+                        "Watch on the latest version of YouTube",
+                        "Failed to extract any player response"
                     ]):
                         logger.warning(f"YouTube restriction encountered: {error_msg[:100]}...")
                         logger.warning("Trying fallback extraction methods...")
