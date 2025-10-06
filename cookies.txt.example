@@ -1,0 +1,15 @@
+# Netscape HTTP Cookie File
+# YouTube cookies - Export from your browser
+# 
+# How to get cookies:
+# 1. Install "Get cookies.txt LOCALLY" browser extension
+# 2. Go to youtube.com and login
+# 3. Click extension icon and export cookies
+# 4. Save as "cookies.txt" in this directory
+#
+# OR use yt-dlp:
+# yt-dlp --cookies-from-browser chrome --cookies cookies.txt https://www.youtube.com/
+
+# Format (copy your cookies here):
+# .youtube.com	TRUE	/	TRUE	0	CONSENT	YES+
+# .youtube.com	TRUE	/	FALSE	1234567890	VISITOR_INFO1_LIVE	xxx
