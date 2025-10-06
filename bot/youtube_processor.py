@@ -11,6 +11,7 @@ from typing import Optional
 import yt_dlp
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, ID3NoHeaderError
+from googleapiclient.discovery import build
 from config import (
     TEMP_DIR, MAX_FILE_SIZE_BYTES, DOWNLOAD_TIMEOUT, 
     AUDIO_QUALITY, AUDIO_FORMAT, ERROR_MESSAGES
@@ -346,118 +347,44 @@ class YouTubeProcessor:
     
     def _search_youtube_sync(self, query: str, max_results: int = 24) -> list:
         try:
-            search_opts = {
-                'quiet': True,
-                'no_warnings': True,
-                'extract_flat': 'in_playlist',
-                'playlist_items': f'1:{max_results}',
-                'socket_timeout': 30,
-                'extractor_retries': 3,
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                },
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['web'],
-                        'player_skip': ['webpage'],
-                    }
-                },
-            }
+            api_key = os.getenv('YOUTUBE_API_KEY')
+            if not api_key:
+                logger.error("YOUTUBE_API_KEY not found in environment variables")
+                return []
             
-            search_results = None
-            search_query = f"ytsearch{max_results}:{query}"
+            logger.info(f"Using YouTube Data API v3 for search: {query}")
             
-            with yt_dlp.YoutubeDL(search_opts) as ydl:
-                try:
-                    search_results = ydl.extract_info(search_query, download=False)
-                except Exception as e:
-                    error_msg = str(e)
-                    if "JSON" in error_msg or "parse" in error_msg.lower():
-                        logger.warning(f"Search JSON error, trying fallback clients...")
-                        
-                        fallback_configs = [
-                            {
-                                **search_opts,
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['web', 'mweb'],
-                                    }
-                                },
-                            },
-                            {
-                                **search_opts,
-                                'http_headers': {
-                                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                                    'Accept-Language': 'en-US,en;q=0.9',
-                                },
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['ios'],
-                                    }
-                                },
-                            },
-                            {
-                                **search_opts,
-                                'extractor_args': {
-                                    'youtube': {
-                                        'player_client': ['android'],
-                                    }
-                                },
-                            },
-                        ]
-                        
-                        for i, config in enumerate(fallback_configs):
-                            try:
-                                logger.info(f"Search fallback {i+1}/{len(fallback_configs)}...")
-                                with yt_dlp.YoutubeDL(config) as fallback_ydl:
-                                    search_results = fallback_ydl.extract_info(search_query, download=False)
-                                    logger.info(f"✓ Search fallback {i+1} successful!")
-                                    break
-                            except Exception as fallback_error:
-                                logger.warning(f"✗ Search fallback {i+1} failed: {str(fallback_error)[:100]}")
-                                continue
-                    else:
-                        raise e
+            youtube = build('youtube', 'v3', developerKey=api_key)
+            
+            search_response = youtube.search().list(
+                q=query,
+                part='id,snippet',
+                maxResults=max_results,
+                type='video',
+                videoCategoryId='10'
+            ).execute()
             
             videos = []
-            if search_results:
-                logger.info(f"Search results type: {type(search_results)}, has entries: {'entries' in search_results if isinstance(search_results, dict) else 'N/A'}")
-                
-                if 'entries' in search_results:
-                    entries_count = len(search_results['entries']) if search_results['entries'] else 0
-                    logger.info(f"Found {entries_count} entries in search results")
+            for item in search_response.get('items', []):
+                if item['id']['kind'] == 'youtube#video':
+                    video_id = item['id']['videoId']
+                    snippet = item['snippet']
                     
-                    for entry in search_results['entries']:
-                        if entry:
-                            logger.info(f"Entry: id={entry.get('id')}, title={entry.get('title', 'N/A')[:50]}")
-                            if entry.get('id') and len(entry.get('id', '')) == 11:
-                                title = entry.get('title', 'Unknown Title')
-                                if title and title not in ['[Deleted video]', '[Private video]']:
-                                    videos.append({
-                                        'title': title,
-                                        'url': f"https://www.youtube.com/watch?v={entry['id']}",
-                                        'uploader': entry.get('uploader', 'Unknown Artist'),
-                                        'duration': entry.get('duration', 0),
-                                        'id': entry['id']
-                                    })
-                else:
-                    logger.warning("No 'entries' key in search results")
-            else:
-                logger.warning("Search results is None or empty")
+                    videos.append({
+                        'title': snippet['title'],
+                        'url': f"https://www.youtube.com/watch?v={video_id}",
+                        'uploader': snippet['channelTitle'],
+                        'duration': 0,
+                        'id': video_id
+                    })
             
-            logger.info(f"Returning {len(videos)} videos")
+            logger.info(f"YouTube Data API returned {len(videos)} videos")
             return videos
                 
         except Exception as e:
-            logger.error(f"Search error: {e}")
+            logger.error(f"YouTube Data API search error: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return []
     
     def _embed_thumbnail_with_mutagen(self, mp3_path: str, thumbnail_path: str, title: str) -> str:
