@@ -13,7 +13,8 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, ID3NoHeaderError
 from config import (
     TEMP_DIR, MAX_FILE_SIZE_BYTES, DOWNLOAD_TIMEOUT, 
-    AUDIO_QUALITY, AUDIO_FORMAT, ERROR_MESSAGES
+    AUDIO_QUALITY, AUDIO_FORMAT, ERROR_MESSAGES,
+    COOKIES_FILE
 )
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,7 @@ class YouTubeProcessor:
                 except Exception as e:
                     logger.error(f"Progress hook error: {e}")
 
-            # Optimized TV Embedded configuration for best compatibility
+            # Advanced configuration with cookie support
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'outtmpl': f'{TEMP_DIR}/%(epoch)s_%(id)s_%(title)s.%(ext)s',
@@ -116,24 +117,26 @@ class YouTubeProcessor:
                 'noplaylist': True,
                 'quiet': True,
                 'no_warnings': True,
-                'cookiefile': None,
                 'nocheckcertificate': True,
                 'geo_bypass': True,
                 'socket_timeout': 30,
                 'extractor_args': {
                     'youtube': {
-                        'player_client': ['tv_embedded'],
-                        'skip': ['hls', 'dash'],
+                        'player_client': ['ios', 'android'],
+                        'player_skip': ['webpage'],
                     }
                 },
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                     'Accept-Language': 'en-us,en;q=0.5',
-                    'Accept-Encoding': 'gzip,deflate',
-                    'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
                 }
             }
+            
+            # Add cookies if available
+            if COOKIES_FILE and os.path.exists(COOKIES_FILE):
+                ydl_opts['cookiefile'] = COOKIES_FILE
+                logger.info(f"Using cookies from: {COOKIES_FILE}")
             
             # Track successful configuration for download
             successful_config = None
@@ -159,7 +162,7 @@ class YouTubeProcessor:
                                 **ydl_opts,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['android'],
+                                        'player_client': ['android_creator'],
                                         'player_skip': ['webpage', 'configs'],
                                     }
                                 },
@@ -168,8 +171,8 @@ class YouTubeProcessor:
                                 **ydl_opts,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['ios'],
-                                        'player_skip': ['webpage', 'configs'],
+                                        'player_client': ['android_vr'],
+                                        'player_skip': ['webpage'],
                                     }
                                 },
                             },
@@ -177,7 +180,8 @@ class YouTubeProcessor:
                                 **ydl_opts,
                                 'extractor_args': {
                                     'youtube': {
-                                        'player_client': ['mweb'],
+                                        'player_client': ['tv_embedded'],
+                                        'skip': ['hls', 'dash'],
                                     }
                                 },
                             },
@@ -186,6 +190,15 @@ class YouTubeProcessor:
                                 'extractor_args': {
                                     'youtube': {
                                         'player_client': ['web'],
+                                        'player_skip': ['configs'],
+                                    }
+                                },
+                            },
+                            {
+                                **ydl_opts,
+                                'extractor_args': {
+                                    'youtube': {
+                                        'player_client': ['mweb'],
                                     }
                                 },
                             }

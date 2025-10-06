@@ -15,6 +15,10 @@ RATE_LIMIT_SECONDS = 0  # Completely disabled - unlimited requests
 AUDIO_QUALITY = "192"
 AUDIO_FORMAT = "mp3"
 
+# YouTube Cookies (optional - helps bypass restrictions)
+YOUTUBE_COOKIES = os.getenv("YOUTUBE_COOKIES", None)
+COOKIES_FILE = "cookies.txt" if os.path.exists("cookies.txt") else None
+
 # Bot messages
 WELCOME_MESSAGE = """
 🎵 *YouTube-dan MP3 Çevirici Bot* 🎵
