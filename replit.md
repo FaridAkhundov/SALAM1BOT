@@ -3,11 +3,8 @@
 This is a Telegram bot that converts YouTube videos to MP3 files with advanced music search capabilities. The bot interface is fully localized in Azerbaijani language. Users can either send YouTube URLs for direct download or search for songs by name. The bot displays search results in paginated inline keyboards (8 songs per page, up to 3 pages) for easy selection. It downloads videos, extracts audio, converts to MP3 format, and sends the audio file back via Telegram. The bot includes rate limiting, file size validation, and comprehensive error handling with user-friendly Azerbaijani messages.
 
 ## Migration Status
-<<<<<<< HEAD
-**COMPLETED (2025-08-19):** Successfully migrated from Replit Agent to standard Replit environment. All package conflicts between `telegram` and `python-telegram-bot` packages resolved, dependencies installed correctly. Bot is fully operational and running with BOT_TOKEN configured. Migration 100% complete.
-=======
-**FINAL COMPLETION (2025-08-19):** Successfully migrated from Replit Agent to standard Replit environment. All package conflicts between `telegram` and `python-telegram-bot` packages resolved, dependencies installed correctly, BOT_TOKEN configured, and bot is now RUNNING and fully operational. Migration 100% complete.
->>>>>>> 4fc2208aa0ab6f1e180ffe359b9dd9fd0bb73e91
+
+**EXTERNAL SERVER READY (2025-10-06):** Bot fully configured for external server deployment with YouTube cookie support, advanced anti-bot detection, and comprehensive setup documentation. Migration complete.
 
 **Final Migration Update (2025-08-17):** Migration completely finalized. Resolved all package conflicts between `telegram` and `python-telegram-bot` packages. Bot successfully starts and runs without errors. All dependencies properly installed and configured.
 
@@ -32,6 +29,8 @@ This is a Telegram bot that converts YouTube videos to MP3 files with advanced m
 **YOUTUBE RESTRICTION BYPASS (2025-08-19):** Enhanced restriction bypass system to handle multiple YouTube blocking methods including "content not available on this app" and "watch on latest version" errors. Implemented multi-tier fallback strategy with web browser, mobile, and minimal configurations. Includes Android and web player client switching for maximum compatibility.
 
 **MUTAGEN ID3v2.3 IMPLEMENTATION (2025-08-19):** Switched from FFmpeg to Mutagen library for thumbnail embedding. This ensures perfect ID3v2.3 compatibility with precise APIC (Attached Picture) tag writing. Thumbnails now display correctly on all devices including Xiaomi 13T Pro, Samsung Music, iPhone, VLC when MP3 files are downloaded locally.
+
+**EXTERNAL SERVER SUPPORT (2025-10-06):** Added comprehensive external server deployment support with YouTube cookie integration, advanced anti-bot detection with 5-tier fallback strategy (android_creator, android_vr, tv_embedded, web, mweb), iOS/Android client emulation, and complete setup documentation including systemd service and Docker configurations.
 
 **CODE OPTIMIZATION (2025-08-18):** Cleaned and optimized codebase by removing unused parameters, excessive logging, redundant error handling, and non-functional features. Streamlined download and search processes while maintaining core functionality.
 
@@ -65,6 +64,7 @@ Multitasking: UNLIMITED (2025-08-17) - 50+ concurrent downloads, 25+ concurrent 
 Code Cleanup: COMPLETED (2025-08-17) - Removed docstrings, comments, and unnecessary code while maintaining full functionality
 Session Management: ENHANCED (2025-08-17) - When users start new searches, old search result buttons show "session expired" message instead of processing outdated requests
 Expired Session Messages: IMPROVED (2025-08-17) - User-friendly Azerbaijani messages when old search buttons are clicked: "Bu axtarışın vaxtı keçib"
+External Server Deployment: FULLY SUPPORTED (2025-10-06) - Complete VPS/cloud server setup with requirements.txt, SETUP.md documentation, cookie support for YouTube bot detection bypass, systemd service configuration, and Docker deployment options
 
 # System Architecture
 
